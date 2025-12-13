@@ -12,6 +12,11 @@ def merge_dicts(left: dict, right: dict) -> dict:
     return {**left, **right}
 
 
+def merge_lists(left: list, right: list) -> list:
+    """Merge two lists by concatenation"""
+    return left + right
+
+
 class GraphState(TypedDict):
     """
     Main state object that flows through all nodes in the graph.
@@ -33,8 +38,7 @@ class GraphState(TypedDict):
     # ========== Phase 2: Vendor Filtering ==========
     all_vendors: List[dict]  # List of Vendor objects from API
     # Annotated because parallel evaluators update this concurrently
-    vendor_scores: Annotated[Dict[str, float], merge_dicts]  # vendor_id -> relevance score (0-100)
-    relevant_vendors: List[dict]  # Filtered vendors that passed evaluation
+    relevant_vendors: Annotated[List[dict], merge_lists]  # Vendors that passed yes/no evaluation
     
     # ========== Phase 3: Negotiation ==========
     vendor_strategies: Dict[str, str]  # vendor_id -> strategy instruction

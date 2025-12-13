@@ -16,7 +16,6 @@ from agents.state import GraphState
 from agents.nodes.extractor import extract_order_node
 from agents.nodes.database_fetcher import fetch_vendors_node
 from agents.nodes.vendor_evaluator import evaluate_vendor_node
-from agents.nodes.filter import filter_vendors_node
 from agents.nodes.strategist import strategist_node
 from agents.nodes.negotiator import negotiate_node
 from agents.nodes.aggregator import aggregator_node
@@ -130,7 +129,6 @@ def create_negotiation_graph() -> StateGraph:
     workflow.add_node("extract_order", extract_order_node)
     workflow.add_node("fetch_vendors", fetch_vendors_node)
     workflow.add_node("evaluate_vendor", evaluate_vendor_node)
-    workflow.add_node("filter_vendors", filter_vendors_node)
     workflow.add_node("strategist", strategist_node)
     workflow.add_node("negotiate", negotiate_node)
     workflow.add_node("aggregator", aggregator_node)
@@ -143,18 +141,15 @@ def create_negotiation_graph() -> StateGraph:
     # Phase 1: Extraction → Fetching
     workflow.add_edge("extract_order", "fetch_vendors")
     
-    # Phase 2: Vendor filtering (Map-Reduce)
+    # Phase 2: Vendor filtering (Map)
     # Map: Fan out to parallel evaluators
     workflow.add_conditional_edges(
         "fetch_vendors",
         continue_to_evaluation,
         ["evaluate_vendor"]
     )
-    # Reduce: All evaluators → Filter
-    workflow.add_edge("evaluate_vendor", "filter_vendors")
-    
-    # Phase 3: Negotiation initialization
-    workflow.add_edge("filter_vendors", "strategist")
+    # All evaluators → Strategist
+    workflow.add_edge("evaluate_vendor", "strategist")
     
     # Phase 3: Negotiation loop (Map-Reduce with cycle)
     # Map: Fan out to parallel negotiators
@@ -214,7 +209,6 @@ def run_negotiation(user_input: str, webhook_url: str = None, max_rounds: int = 
         "webhook_url": webhook_url,
         "order_object": None,
         "all_vendors": [],
-        "vendor_scores": {},
         "relevant_vendors": [],
         "vendor_strategies": {},
         "negotiation_history": {},

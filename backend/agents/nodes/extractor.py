@@ -12,6 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
 from models.order import OrderObject
+from agents.config import DEFAULT_MODEL, DEFAULT_TEMPERATURE
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +21,10 @@ class OrderExtractorAgent:
     """Agent that extracts structured order data from user input"""
     
     def __init__(self):
-        # Initialize Claude
+        # Initialize Claude with centralized config
         self.llm = ChatAnthropic(
-            model="claude-sonnet-4-20250514",
-            temperature=0
+            model=DEFAULT_MODEL,
+            temperature=DEFAULT_TEMPERATURE
         )
 
         # Setup output parser

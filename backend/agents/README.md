@@ -11,9 +11,9 @@ The system consists of three phases:
 - **Purpose**: Convert raw user input into structured `OrderObject`
 - **Status**: ✅ Fully implemented (adapted from `objectextractor.py`)
 
-### Phase 2: Vendor Filtering (Map-Reduce)
-- **Nodes**: `fetch_vendors_node` → `evaluate_vendor_node` (parallel) → `filter_vendors_node`
-- **Purpose**: Fetch vendors and filter by relevance
+### Phase 2: Vendor Filtering (Map)
+- **Nodes**: `fetch_vendors_node` → `evaluate_vendor_node` (parallel)
+- **Purpose**: Fetch vendors and filter by yes/no relevance evaluation
 - **Status**: 📝 Stub implementations
 
 ### Phase 3: Negotiation Loop (Map-Reduce with Cycle)
@@ -30,13 +30,12 @@ agents/
 ├── state.py              # GraphState schema
 ├── nodes/
 │   ├── __init__.py
-│   ├── extractor.py      # ✅ Phase 1: Order extraction (implemented)
-│   ├── database_fetcher.py    # 📝 Phase 2: Fetch vendors (stub)
-│   ├── vendor_evaluator.py   # 📝 Phase 2: Evaluate vendors (stub)
-│   ├── filter.py              # 📝 Phase 2: Filter vendors (stub)
-│   ├── strategist.py          # 📝 Phase 3: Generate strategies (stub)
-│   ├── negotiator.py          # 📝 Phase 3: Negotiate (stub)
-│   └── aggregator.py          # 📝 Phase 3: Aggregate & decide (stub)
+│   ├── extractor.py          # ✅ Phase 1: Order extraction (implemented)
+│   ├── database_fetcher.py   # 📝 Phase 2: Fetch vendors (stub)
+│   ├── vendor_evaluator.py  # 📝 Phase 2: Evaluate vendors (stub)
+│   ├── strategist.py         # 📝 Phase 3: Generate strategies (stub)
+│   ├── negotiator.py         # 📝 Phase 3: Negotiate (stub)
+│   └── aggregator.py         # 📝 Phase 3: Aggregate & decide (stub)
 └── utils/
     ├── __init__.py
     ├── vendor_api.py     # 📝 Vendor API client (stub)
@@ -105,8 +104,7 @@ The `GraphState` tracks all data flowing through the graph:
     
     # Phase 2: Filtering
     "all_vendors": List[dict],
-    "vendor_scores": Dict[str, float],
-    "relevant_vendors": List[dict],
+    "relevant_vendors": List[dict],  # Built by parallel yes/no evaluations
     
     # Phase 3: Negotiation
     "vendor_strategies": Dict[str, str],
@@ -132,8 +130,6 @@ fetch_vendors
   ↓
 [evaluate_vendor × N] (parallel map)
   ↓
-filter_vendors (reduce)
-  ↓
 strategist
   ↓
 [negotiate × N] (parallel map)
@@ -150,7 +146,7 @@ Decision Gate:
 To add functionality to stub nodes:
 
 1. **Database Fetcher**: Implement vendor API calls
-2. **Vendor Evaluator**: Add LLM-based relevance scoring
+2. **Vendor Evaluator**: Add LLM-based yes/no relevance evaluation
 3. **Strategist**: Add LLM-based strategy generation
 4. **Negotiator**: Add vendor communication logic
 5. **Aggregator**: Add quote comparison and decision logic

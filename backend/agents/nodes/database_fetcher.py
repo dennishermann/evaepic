@@ -5,14 +5,11 @@ Fetches vendors from external API.
 """
 
 import logging
-import os
 from typing import Dict, Any, List
 from agents.utils.vendor_api import VendorAPIClient
+from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID
 
 logger = logging.getLogger(__name__)
-
-# API Base URL for vendor service
-API_BASE = "https://negbot-backend-ajdxh9axb0ddb0e9.westeurope-01.azurewebsites.net/api"
 
 
 def validate_vendors(vendors: List[Dict[str, Any]]) -> bool:
@@ -54,8 +51,8 @@ def fetch_vendors_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     LangGraph node function that fetches vendors from external API.
     
-    Reads TEAM_ID from environment (optional) and calls the vendor API
-    to retrieve all available vendors.
+    Reads NEGOTIATION_TEAM_ID from centralized config (optional) and calls
+    the vendor API to retrieve all available vendors.
     
     Args:
         state: GraphState
@@ -65,21 +62,20 @@ def fetch_vendors_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     logger.info("[DATABASE_FETCHER] Starting vendor fetch")
     
-    # Read team_id from environment (optional)
-    team_id_str = os.getenv("TEAM_ID")
+    # Read team_id from centralized config (optional)
     team_id = None
-    if team_id_str:
+    if NEGOTIATION_TEAM_ID:
         try:
-            team_id = int(team_id_str)
-            logger.info(f"[DATABASE_FETCHER] Using team_id from environment: {team_id}")
+            team_id = int(NEGOTIATION_TEAM_ID)
+            logger.info(f"[DATABASE_FETCHER] Using team_id from config: {team_id}")
         except ValueError:
-            logger.warning(f"[DATABASE_FETCHER] Invalid TEAM_ID in environment: {team_id_str}, ignoring")
+            logger.warning(f"[DATABASE_FETCHER] Invalid NEGOTIATION_TEAM_ID in config: {NEGOTIATION_TEAM_ID}, ignoring")
     else:
-        logger.info("[DATABASE_FETCHER] No TEAM_ID in environment, fetching all vendors")
+        logger.info("[DATABASE_FETCHER] No NEGOTIATION_TEAM_ID in config, fetching all vendors")
     
     try:
-        # Initialize API client
-        client = VendorAPIClient(api_base_url=API_BASE)
+        # Initialize API client with centralized config
+        client = VendorAPIClient(api_base_url=NEGOTIATION_API_BASE)
         
         # Fetch vendors from API
         vendors = client.get_all_vendors(team_id=team_id)

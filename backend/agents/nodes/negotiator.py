@@ -6,18 +6,19 @@ Executes strategy plans and adapts based on market feedback.
 """
 
 import logging
-import os
 import re
 import requests
 import time
 from typing import Dict, Any, TypedDict, Optional
 from pydantic import BaseModel, Field
 
+from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID
+
 logger = logging.getLogger(__name__)
 
-# API Configuration from environment variables
-API_BASE = os.getenv("NEGOTIATION_API_BASE")
-TEAM_ID = os.getenv("NEGOTIATION_TEAM_ID")
+# API Configuration from centralized config
+API_BASE = NEGOTIATION_API_BASE
+TEAM_ID = NEGOTIATION_TEAM_ID
 
 
 class NegotiateInput(TypedDict):

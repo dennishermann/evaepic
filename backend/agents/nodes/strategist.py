@@ -2,26 +2,19 @@
 Strategist Node
 
 Generates vendor-specific negotiation strategies based on:
-- Vendor behavioral profiles from API
+- Vendor behavioral profiles from state (fetched by database_fetcher)
 - Order requirements and constraints
 - Budget and priorities
 """
 
 import logging
-import os
-import requests
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 from langchain_anthropic import ChatAnthropic
 
+from agents.config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, MAX_NEGOTIATION_ROUNDS
+
 logger = logging.getLogger(__name__)
-
-# API Configuration from environment variables
-API_BASE = os.getenv("NEGOTIATION_API_BASE")
-TEAM_ID = os.getenv("NEGOTIATION_TEAM_ID")
-
-# Configurable parameter
-MAX_NEGOTIATION_ROUNDS = int(os.getenv("MAX_NEGOTIATION_ROUNDS", "2"))
 
 
 class PriceTargets(BaseModel):
@@ -47,57 +40,29 @@ class StrategyPlan(BaseModel):
     behavioral_notes: str = Field(description="Notes about vendor's behavioral profile")
 
 
-def fetch_vendor_details(vendor_id: str) -> Dict[str, Any]:
-    """
-    Fetch detailed vendor information from API.
-    
-    Args:
-        vendor_id: Vendor identifier
-        
-    Returns:
-        Vendor details including behavioral_prompt
-    """
-    try:
-        url = f"{API_BASE}/vendors/{vendor_id}"
-        logger.info(f"[STRATEGIST] Fetching vendor details: {url}")
-        
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        
-        vendor_data = response.json()
-        logger.info(f"[STRATEGIST] Retrieved vendor: {vendor_data.get('name', 'Unknown')}")
-        return vendor_data
-        
-    except requests.RequestException as e:
-        logger.error(f"[STRATEGIST] Failed to fetch vendor {vendor_id}: {e}")
-        return {"error": str(e)}
-
-
 def create_strategy_for_vendor(
     vendor: Dict[str, Any],
-    vendor_details: Dict[str, Any],
     order: Dict[str, Any]
 ) -> StrategyPlan:
     """
     Generate a negotiation strategy for a specific vendor using LLM.
     
     Args:
-        vendor: Basic vendor info from state
-        vendor_details: Detailed vendor info from API (includes behavioral_prompt)
+        vendor: Vendor info from state (includes behavioral_prompt)
         order: Order requirements and constraints
         
     Returns:
         StrategyPlan with complete negotiation strategy
     """
     llm = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
-        temperature=0
+        model=DEFAULT_MODEL,
+        temperature=DEFAULT_TEMPERATURE
     )
     
     # Extract key information
     vendor_id = vendor.get("id", "unknown")
     vendor_name = vendor.get("name", "Unknown Vendor")
-    behavioral_prompt = vendor_details.get("behavioral_prompt", "No behavioral information available")
+    behavioral_prompt = vendor.get("behavioral_prompt", "No behavioral information available")
     
     item = order.get("item", "product")
     quantity = order.get("quantity", {})
@@ -155,7 +120,7 @@ def strategist_node(state: Dict[str, Any]) -> Dict[str, Any]:
     Generate negotiation strategies for each relevant vendor.
     
     This node:
-    1. Fetches detailed vendor information from API (including behavioral_prompt)
+    1. Reads vendor information from state (including behavioral_prompt from database_fetcher)
     2. Analyzes vendor personality and order requirements
     3. Creates tailored StrategyPlan for each vendor using LLM
     4. Stores strategies in state for use by Negotiator
@@ -193,15 +158,9 @@ def strategist_node(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"[STRATEGIST] Processing vendor: {vendor_name} (ID: {vendor_id})")
         
         try:
-            # Fetch detailed vendor information from API
-            vendor_details = fetch_vendor_details(vendor_id)
-            
-            if "error" in vendor_details:
-                logger.warning(f"[STRATEGIST] Could not fetch details for {vendor_name}, using basic info")
-                vendor_details = vendor  # Fallback to basic info
-            
-            # Generate strategy using LLM
-            strategy = create_strategy_for_vendor(vendor, vendor_details, order)
+            # Generate strategy using LLM with vendor data from state
+            # (vendor already contains behavioral_prompt from database_fetcher)
+            strategy = create_strategy_for_vendor(vendor, order)
             
             # Store strategy as dict for state
             vendor_strategies[vendor_id] = strategy.model_dump()
