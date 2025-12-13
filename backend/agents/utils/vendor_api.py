@@ -127,40 +127,9 @@ class VendorAPIClient:
         # Should not reach here, but just in case
         raise Exception("Failed to fetch vendors: Unknown error")
     
-    async def send_negotiation_message(
-        self,
-        vendor_id: str,
-        message: str,
-        order_context: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+    def get_vendor_details(self, vendor_id: str) -> Dict[str, Any]:
         """
-        Stub: Send negotiation message to vendor.
-        
-        Will eventually:
-        - Make HTTP POST to vendor's API endpoint
-        - Include order context and message
-        - Wait for vendor response
-        - Parse and return quote data
-        
-        Args:
-            vendor_id: ID of the vendor to contact
-            message: Negotiation message to send
-            order_context: Order details for context
-            
-        Returns:
-            Vendor's response (quote, counteroffer, etc.)
-        """
-        logger.info(f"[VENDOR_API] Stub: send_negotiation_message(vendor_id={vendor_id})")
-        logger.info(f"[VENDOR_API] Message: {message}")
-        logger.warning("[VENDOR_API] Not implemented - would send to vendor API")
-        return {
-            "status": "stub",
-            "message": "This is a stub response"
-        }
-    
-    async def get_vendor_details(self, vendor_id: str) -> Dict[str, Any]:
-        """
-        Stub: Get detailed information about a specific vendor.
+        Get detailed information about a specific vendor.
         
         Args:
             vendor_id: ID of the vendor
@@ -168,6 +137,13 @@ class VendorAPIClient:
         Returns:
             Vendor details dictionary
         """
-        logger.info(f"[VENDOR_API] Stub: get_vendor_details(vendor_id={vendor_id})")
-        logger.warning("[VENDOR_API] Not implemented - would fetch vendor details")
-        return {}
+        endpoint = f"{self.api_base_url}/vendors/{vendor_id}"
+        logger.info(f"[VENDOR_API] Fetching vendor details from {endpoint}")
+        
+        try:
+            response = requests.get(endpoint, timeout=15)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"[VENDOR_API] Failed to fetch vendor details: {e}")
+            raise

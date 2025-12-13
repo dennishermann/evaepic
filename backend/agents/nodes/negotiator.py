@@ -8,17 +8,22 @@ Executes strategy plans and adapts based on market feedback.
 import logging
 import re
 import requests
+import json
 import time
 from typing import Dict, Any, TypedDict, Optional
 from pydantic import BaseModel, Field
 
 from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID
+from agents.utils.conversation_api import ConversationAPIClient
 
 logger = logging.getLogger(__name__)
 
 # API Configuration from centralized config
 API_BASE = NEGOTIATION_API_BASE
 TEAM_ID = NEGOTIATION_TEAM_ID
+
+# Initialize API Client
+api_client = ConversationAPIClient(api_base_url=NEGOTIATION_API_BASE)
 
 
 class NegotiateInput(TypedDict):
@@ -58,27 +63,9 @@ def create_conversation(vendor_id: str, title: str) -> Optional[str]:
     Returns:
         Conversation ID or None if failed
     """
-    try:
-        url = f"{API_BASE}/conversations/?team_id={TEAM_ID}"
-        payload = {
-            "vendor_id": vendor_id,
-            "title": title
-        }
-        
-        logger.info(f"[NEGOTIATOR] Creating conversation with vendor {vendor_id}")
-        
-        response = requests.post(url, json=payload, timeout=15)
-        response.raise_for_status()
-        
-        data = response.json()
-        conversation_id = data.get("id") or data.get("conversation_id")
-        
-        logger.info(f"[NEGOTIATOR] ✓ Conversation created: {conversation_id}")
-        return conversation_id
-        
-    except requests.RequestException as e:
-        logger.error(f"[NEGOTIATOR] Failed to create conversation: {e}")
-        return None
+    # Use configured team_id or default to 1
+    team_id = TEAM_ID if TEAM_ID else 1
+    return api_client.create_conversation(vendor_id, team_id, title)
 
 
 def send_message(conversation_id: str, message: str) -> Optional[str]:
@@ -92,38 +79,7 @@ def send_message(conversation_id: str, message: str) -> Optional[str]:
     Returns:
         Vendor's response message or None if failed
     """
-    try:
-        url = f"{API_BASE}/messages/{conversation_id}"
-        
-        # API expects form-data with 'data' field containing JSON
-        data_payload = {"content": message}
-        
-        logger.info(f"[NEGOTIATOR] Sending message to conversation {conversation_id}")
-        logger.debug(f"[NEGOTIATOR] Message content: {message[:100]}...")
-        
-        response = requests.post(
-            url,
-            data={"data": str(data_payload)},
-            timeout=20
-        )
-        response.raise_for_status()
-        
-        response_data = response.json()
-        
-        # Extract vendor's response
-        vendor_response = response_data.get("response", "")
-        if not vendor_response:
-            # Try alternative keys
-            vendor_response = response_data.get("content", "") or response_data.get("message", "")
-        
-        logger.info(f"[NEGOTIATOR] ✓ Received vendor response ({len(vendor_response)} chars)")
-        logger.debug(f"[NEGOTIATOR] Response preview: {vendor_response[:150]}...")
-        
-        return vendor_response
-        
-    except requests.RequestException as e:
-        logger.error(f"[NEGOTIATOR] Failed to send message: {e}")
-        return None
+    return api_client.send_message(conversation_id, message)
 
 
 def extract_offer_from_response(response: str, vendor_id: str, vendor_name: str, conversation_id: str, round_index: int) -> OfferSnapshot:
@@ -142,9 +98,9 @@ def extract_offer_from_response(response: str, vendor_id: str, vendor_name: str,
     """
     # Initialize with defaults
     offer = OfferSnapshot(
-        vendor_id=vendor_id,
+        vendor_id=str(vendor_id),
         vendor_name=vendor_name,
-        conversation_id=conversation_id,
+        conversation_id=str(conversation_id),
         round_index=round_index,
         last_vendor_message=response,
         status="in_progress"
@@ -300,6 +256,7 @@ def negotiate_node(input_data: NegotiateInput) -> Dict[str, Any]:
     logger.info("=" * 60)
     logger.info(f"[NEGOTIATOR] Negotiating with {vendor_name} (Round {round_index})")
     logger.info("=" * 60)
+    print(f"[NEGOTIATOR] Negotiating with {vendor_name} (Round {round_index})...", flush=True)
     
     # Convert last_offer dict to OfferSnapshot if available
     last_offer = None
@@ -365,6 +322,8 @@ def negotiate_node(input_data: NegotiateInput) -> Dict[str, Any]:
         logger.info(f"[NEGOTIATOR]   Delivery: {offer.delivery_days} days")
     logger.info(f"[NEGOTIATOR]   Status: {offer.status}")
     logger.info("=" * 60)
+    
+    print(f"[NEGOTIATOR] ✓ {vendor_name} offered: ${offer.price_total} (Delivery: {offer.delivery_days} days)", flush=True)
     
     # Update negotiation history
     history_entry = {

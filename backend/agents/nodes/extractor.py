@@ -90,11 +90,13 @@ def extract_order_node(state: Dict[str, Any]) -> Dict[str, Any]:
         Dict with updated fields: order_object, phase
     """
     logger.info("[EXTRACTOR] Starting order extraction")
+    print(f"[EXTRACTOR] Starting order extraction", flush=True)
     
     user_input = state.get("user_input", "")
     
     if not user_input:
         logger.error("[EXTRACTOR] No user input provided")
+        print(f"[EXTRACTOR] No user input provided", flush=True)
         return {
             "phase": "extraction",
             "error": "No user input provided"
@@ -106,10 +108,12 @@ def extract_order_node(state: Dict[str, Any]) -> Dict[str, Any]:
         order = agent.extract(user_input)
         
         logger.info(f"[EXTRACTOR] Extracted order for: {order.item}")
+        print(f"[EXTRACTOR] Extracted order for: {order.item}", flush=True)
         
         # Validate the order
         if not validate_order(order):
             logger.error(f"[EXTRACTOR] Validation failed for order: {order.item}")
+            print(f"[EXTRACTOR] Validation failed for order: {order.item}", flush=True)
             return {
                 "phase": "extraction",
                 "error": "Order validation failed"
@@ -117,6 +121,8 @@ def extract_order_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Return updated state
         logger.info(f"[EXTRACTOR] Successfully extracted and validated order")
+        print(f"[EXTRACTOR] Successfully extracted and validated order", flush=True)
+        print(f"[EXTRACTOR] ✓ Extracted: {order.quantity.preferred}x {order.item} (Budget: {order.budget} {order.currency})", flush=True)
         return {
             "order_object": order.model_dump(),
             "phase": "extraction"
@@ -124,6 +130,7 @@ def extract_order_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"[EXTRACTOR] Error during extraction: {e}")
+        print(f"[EXTRACTOR] Error during extraction: {e}", flush=True)
         return {
             "phase": "extraction",
             "error": f"Extraction failed: {str(e)}"

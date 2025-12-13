@@ -385,6 +385,7 @@ def aggregator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     logger.info(f"[AGGREGATOR] Round {rounds_completed}/{max_rounds} completed")
     logger.info(f"[AGGREGATOR] Analyzing {len(leaderboard)} vendor offers")
+    print(f"[AGGREGATOR] Analyzing round {rounds_completed} results ({len(leaderboard)} offers)...", flush=True)
     
     # Create market analysis
     market_analysis = create_market_analysis(leaderboard, order, rounds_completed)
@@ -397,8 +398,11 @@ def aggregator_node(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"[AGGREGATOR] Median Price: ${market_analysis.benchmarks.median_price:.2f}")
     
     logger.info(f"[AGGREGATOR] Vendor Rankings:")
+    if market_analysis.benchmarks.best_price:
+        print(f"[AGGREGATOR] Market Analysis: Best=${market_analysis.benchmarks.best_price:.2f} | Median=${market_analysis.benchmarks.median_price:.2f}", flush=True)
     for ranking in market_analysis.rankings:
         logger.info(f"[AGGREGATOR]   {ranking.rank}. {ranking.vendor_name} (score: {ranking.score:.1f}) - {ranking.reason}")
+        print(f"[AGGREGATOR]   #{ranking.rank} {ranking.vendor_name}: ${ranking.price} (Score: {ranking.score:.1f})", flush=True)
     
     # Create final comparison report (will be used if negotiation ends)
     final_report = create_final_comparison_report(leaderboard, order)

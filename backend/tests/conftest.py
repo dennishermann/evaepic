@@ -7,6 +7,16 @@ import os
 from typing import Dict, Any
 
 
+def pytest_addoption(parser):
+    """Add custom command line options"""
+    parser.addoption(
+        "--run-integration",
+        action="store_true",
+        default=False,
+        help="Run integration tests that call external APIs"
+    )
+
+
 @pytest.fixture
 def mock_api_base_url() -> str:
     """Fixture providing the API base URL"""

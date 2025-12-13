@@ -41,8 +41,8 @@ class GraphState(TypedDict):
     relevant_vendors: Annotated[List[dict], merge_lists]  # Vendors that passed yes/no evaluation
     
     # ========== Phase 3: Negotiation ==========
-    vendor_strategies: Dict[str, str]  # vendor_id -> strategy instruction
-    # Annotated because parallel negotiators update this concurrently
+    # Annotated because parallel strategists update this concurrently
+    vendor_strategies: Annotated[Dict[str, dict], merge_dicts]  # vendor_id -> strategy dict
     negotiation_history: Annotated[Dict[str, List[dict]], merge_dicts]  # vendor_id -> list of messages
     # Annotated because parallel negotiators update this concurrently
     leaderboard: Annotated[Dict[str, dict], merge_dicts]  # vendor_id -> latest Quote object

@@ -16,7 +16,7 @@ from agents.state import GraphState
 from agents.nodes.extractor import extract_order_node
 from agents.nodes.database_fetcher import fetch_vendors_node
 from agents.nodes.vendor_evaluator import evaluate_vendor_node
-from agents.nodes.strategist import strategist_node
+from agents.nodes.strategist import start_strategy_phase, generate_strategy_node
 from agents.nodes.negotiator import negotiate_node
 from agents.nodes.aggregator import aggregator_node
 
@@ -43,6 +43,39 @@ def continue_to_evaluation(state: GraphState) -> List[Send]:
         })
         for vendor in all_vendors
     ]
+
+
+def fan_out_to_strategies(state: GraphState) -> List[Send]:
+    """
+    Fan-out: Create strategy generation tasks for each relevant vendor.
+    """
+    relevant_vendors = state.get("relevant_vendors", [])
+    order = state.get("order_object", {})
+    
+    logger.info(f"[ROUTER] Fanning out strategies for {len(relevant_vendors)} vendors")
+    
+    return [
+        Send("generate_strategy", {
+            "vendor": vendor,
+            "order": order
+        })
+        for vendor in relevant_vendors
+    ]
+
+
+def start_negotiation_phase(state: GraphState) -> Dict[str, Any]:
+    """
+    Synchronization barrier after strategy generation.
+    Pass-through node to start negotiation phase.
+    """
+    # This node runs once after all parallel strategy nodes complete
+    strategies = state.get("vendor_strategies", {})
+    logger.info("=" * 60)
+    logger.info(f"[COORDINATOR] Strategy phase complete. Strategies generated: {len(strategies)}")
+    print(f"[COORDINATOR] ✓ Strategy phase complete. Generated {len(strategies)} strategies.", flush=True)
+    logger.info("=" * 60)
+    
+    return {"phase": "negotiation"}
 
 
 def continue_to_negotiation(state: GraphState) -> List[Send]:
@@ -95,7 +128,14 @@ def should_continue_negotiation(state: GraphState) -> Literal["continue_negotiat
         return "end"
     
     # Find best price
-    best_price = min([quote["price"] for quote in leaderboard.values()])
+    valid_prices = [quote["price_total"] for quote in leaderboard.values() if quote.get("price_total") is not None]
+    
+    if not valid_prices:
+        logger.info("[DECISION_GATE] No valid prices yet")
+        # Proceed based on rounds check below
+        best_price = float('inf')
+    else:
+        best_price = min(valid_prices)
     
     logger.info(f"[DECISION_GATE] Round {rounds_completed}/{max_rounds}, Best: ${best_price:.2f}, Budget: ${budget:.2f}")
     
@@ -126,10 +166,16 @@ def create_negotiation_graph() -> StateGraph:
     workflow = StateGraph(GraphState)
     
     # ========== Add Nodes ==========
+    # ========== Add Nodes ==========
     workflow.add_node("extract_order", extract_order_node)
     workflow.add_node("fetch_vendors", fetch_vendors_node)
     workflow.add_node("evaluate_vendor", evaluate_vendor_node)
-    workflow.add_node("strategist", strategist_node)
+    
+    # New strategy nodes
+    workflow.add_node("start_strategy_phase", start_strategy_phase)
+    workflow.add_node("generate_strategy", generate_strategy_node)
+    workflow.add_node("start_negotiation_phase", start_negotiation_phase)
+    
     workflow.add_node("negotiate", negotiate_node)
     workflow.add_node("aggregator", aggregator_node)
     
@@ -148,13 +194,22 @@ def create_negotiation_graph() -> StateGraph:
         continue_to_evaluation,
         ["evaluate_vendor"]
     )
-    # All evaluators → Strategist
-    workflow.add_edge("evaluate_vendor", "strategist")
+    # All evaluators → Start Strategy Phase (Sync)
+    workflow.add_edge("evaluate_vendor", "start_strategy_phase")
     
-    # Phase 3: Negotiation loop (Map-Reduce with cycle)
+    # Phase 3: Strategy Generation (Map)
+    workflow.add_conditional_edges(
+        "start_strategy_phase",
+        fan_out_to_strategies,
+        ["generate_strategy"]
+    )
+    # All strategies → Start Negotiation Phase (Sync)
+    workflow.add_edge("generate_strategy", "start_negotiation_phase")
+    
+    # Phase 4: Negotiation loop (Map-Reduce with cycle)
     # Map: Fan out to parallel negotiators
     workflow.add_conditional_edges(
-        "strategist",
+        "start_negotiation_phase",
         continue_to_negotiation,
         ["negotiate"]
     )
@@ -166,7 +221,7 @@ def create_negotiation_graph() -> StateGraph:
         "aggregator",
         should_continue_negotiation,
         {
-            "continue_negotiating": "strategist",  # Loop back
+            "continue_negotiating": "start_strategy_phase",  # Loop back to strategy start
             "end": END
         }
     )
@@ -222,9 +277,40 @@ def run_negotiation(user_input: str, webhook_url: str = None, max_rounds: int = 
         "error": None
     }
     
-    # Run the graph
-    final_state = app.invoke(initial_state)
+    # Run the graph with streaming to show progress
+    print("\n🔄 Execution Stream:")
+    final_state = initial_state.copy()
     
+    for event in app.stream(initial_state):
+        for node_name, state_update in event.items():
+            print(f"   👉 Node Completed: {node_name}")
+            # Update local state tracking (though app.invoke equivalent returns full state)
+            # In LangGraph, stream returns the update from the node
+            final_state.update(state_update)
+            
+            # Special logging for specific nodes
+            if node_name == "fetch_vendors":
+                count = len(state_update.get("all_vendors", []))
+                print(f"      Found {count} vendors")
+            
+            if node_name == "evaluate_vendor":
+                # This runs in parallel, so we might see multiple
+                pass
+                
+            if node_name == "generate_strategy":
+                # Parallel strategy generation
+                pass
+                
+            if node_name == "start_strategy_phase":
+                 print("   👉 Node Completed: start_strategy_phase", flush=True)
+
+            if node_name == "negotiate":
+                # Print which vendor finished negotiating
+                pass
+                
+            if node_name == "aggregator":
+                print("      Aggregation complete")
+                
     logger.info("=" * 60)
     logger.info("NEGOTIATION GRAPH COMPLETED")
     logger.info("=" * 60)

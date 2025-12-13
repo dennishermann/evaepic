@@ -95,6 +95,7 @@ def fetch_vendors_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Return updated state
         logger.info(f"[DATABASE_FETCHER] Successfully fetched and validated {len(vendors)} vendors")
+        print(f"[DATABASE_FETCHER] ✓ Fetched {len(vendors)} vendors", flush=True)
         return {
             "all_vendors": vendors,
             "phase": "filtering"

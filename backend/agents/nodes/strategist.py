@@ -8,7 +8,7 @@ Generates vendor-specific negotiation strategies based on:
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, TypedDict
 from pydantic import BaseModel, Field
 from langchain_anthropic import ChatAnthropic
 
@@ -115,83 +115,88 @@ Return a complete StrategyPlan."""
     return strategy
 
 
-def strategist_node(state: Dict[str, Any]) -> Dict[str, Any]:
+class GenerateStrategyInput(TypedDict):
+    """Input for parallel strategy generation"""
+    vendor: Dict[str, Any]
+    order: Dict[str, Any]
+
+
+def generate_strategy_node(input_data: GenerateStrategyInput) -> Dict[str, Any]:
     """
-    Generate negotiation strategies for each relevant vendor.
-    
-    This node:
-    1. Reads vendor information from state (including behavioral_prompt from database_fetcher)
-    2. Analyzes vendor personality and order requirements
-    3. Creates tailored StrategyPlan for each vendor using LLM
-    4. Stores strategies in state for use by Negotiator
+    Generate strategy for a SINGLE vendor (Parallel Node).
     
     Args:
-        state: GraphState with relevant_vendors and order_object
+        input_data: Dict with 'vendor' and 'order'
         
     Returns:
-        Dict with updated fields: vendor_strategies, max_rounds, phase
+        Dict with vendor_strategies update
+    """
+    vendor = input_data["vendor"]
+    order = input_data["order"]
+    vendor_id = vendor.get("id")
+    vendor_name = vendor.get("name", "Unknown")
+    
+    print(f"[STRATEGIST] Generating strategy for {vendor_name}...", flush=True)
+    
+    try:
+        # Generate strategy using LLM
+        strategy = create_strategy_for_vendor(vendor, order)
+        
+        # Return state update for this specific vendor
+        return {
+            "vendor_strategies": {
+                str(vendor_id): strategy.model_dump()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"[STRATEGIST] Failed to create strategy for {vendor_name}: {e}")
+        # Create fallback strategy
+        fallback = {
+            "vendor_id": str(vendor_id),
+            "vendor_name": vendor_name,
+            "objective": f"Negotiate best price for {order.get('item', 'product')}",
+            "price_targets": {
+                "anchor": order.get("budget", 10000) * 0.7,
+                "target": order.get("budget", 10000) * 0.8,
+                "walk_away": order.get("budget", 10000) * 0.95,
+                "currency": order.get("currency", "USD")
+            },
+            "tone": "professional",
+            "approach": "standard negotiation",
+            "arguments": ["competitive pricing", "volume commitment"],
+            "concessions": ["payment terms", "delivery timeline"],
+            "opening_message": f"Hello, we are interested in purchasing {order.get('item', 'product')}. What are your best terms?",
+            "assumptions": ["Standard market rates"],
+            "behavioral_notes": "Unknown vendor profile"
+        }
+        return {
+            "vendor_strategies": {
+                str(vendor_id): fallback
+            }
+        }
+
+
+def start_strategy_phase(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Dummy/Synchronization node to mark start of strategy phase.
+    Acts as a router input for fan-out.
     """
     logger.info("=" * 60)
     logger.info("[STRATEGIST] Starting strategy generation phase")
     logger.info("=" * 60)
     
     relevant_vendors = state.get("relevant_vendors", [])
-    order = state.get("order_object", {})
     
     if not relevant_vendors:
         logger.warning("[STRATEGIST] No relevant vendors found")
+        # Ensure we move to next phase even if empty
         return {
-            "vendor_strategies": {},
-            "max_rounds": MAX_NEGOTIATION_ROUNDS,
-            "phase": "negotiation"
+             "max_rounds": MAX_NEGOTIATION_ROUNDS,
+             "phase": "negotiation"
         }
-    
-    logger.info(f"[STRATEGIST] Creating strategies for {len(relevant_vendors)} vendors")
-    logger.info(f"[STRATEGIST] Max negotiation rounds: {MAX_NEGOTIATION_ROUNDS}")
-    
-    vendor_strategies = {}
-    
-    for vendor in relevant_vendors:
-        vendor_id = vendor.get("id")
-        vendor_name = vendor.get("name", "Unknown")
         
-        logger.info(f"[STRATEGIST] Processing vendor: {vendor_name} (ID: {vendor_id})")
-        
-        try:
-            # Generate strategy using LLM with vendor data from state
-            # (vendor already contains behavioral_prompt from database_fetcher)
-            strategy = create_strategy_for_vendor(vendor, order)
-            
-            # Store strategy as dict for state
-            vendor_strategies[vendor_id] = strategy.model_dump()
-            
-        except Exception as e:
-            logger.error(f"[STRATEGIST] Failed to create strategy for {vendor_name}: {e}")
-            # Create a basic fallback strategy
-            vendor_strategies[vendor_id] = {
-                "vendor_id": vendor_id,
-                "vendor_name": vendor_name,
-                "objective": f"Negotiate best price for {order.get('item', 'product')}",
-                "price_targets": {
-                    "anchor": order.get("budget", 10000) * 0.7,
-                    "target": order.get("budget", 10000) * 0.8,
-                    "walk_away": order.get("budget", 10000) * 0.95,
-                    "currency": order.get("currency", "USD")
-                },
-                "tone": "professional",
-                "approach": "standard negotiation",
-                "arguments": ["competitive pricing", "volume commitment"],
-                "concessions": ["payment terms", "delivery timeline"],
-                "opening_message": f"Hello, we are interested in purchasing {order.get('item', 'product')}. What are your best terms?",
-                "assumptions": ["Standard market rates"],
-                "behavioral_notes": "Unknown vendor profile"
-            }
-    
-    logger.info(f"[STRATEGIST] ✓ Created {len(vendor_strategies)} strategies")
-    logger.info("=" * 60)
-    
+    logger.info(f"[STRATEGIST] Preparing to fan out for {len(relevant_vendors)} vendors")
     return {
-        "vendor_strategies": vendor_strategies,
-        "max_rounds": MAX_NEGOTIATION_ROUNDS,
-        "phase": "negotiation"
+        "max_rounds": MAX_NEGOTIATION_ROUNDS
     }
