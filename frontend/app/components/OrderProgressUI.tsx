@@ -7,6 +7,149 @@ interface OrderProgressUIProps {
   progress: OrderProgressStep[];
 }
 
+// Helper component to render output as cards
+function OutputCards({ output, stepNumber }: { output: string; stepNumber: number }) {
+  const lines = output.split('\n').filter(line => line.trim());
+  
+  // Parse different step outputs into cards
+  if (stepNumber === 1) {
+    // Order items - parse bullet points with details
+    const items: Array<{ name: string; details: string[] }> = [];
+    let currentItem: { name: string; details: string[] } | null = null;
+    
+    lines.forEach(line => {
+      if (line.trim().startsWith('•')) {
+        if (currentItem) items.push(currentItem);
+        const match = line.match(/•\s*(\d+)x\s*(.+)/);
+        if (match) {
+          currentItem = { name: `${match[1]}x ${match[2]}`, details: [] };
+        }
+      } else if (currentItem && line.trim()) {
+        currentItem.details.push(line.trim());
+      }
+    });
+    if (currentItem) items.push(currentItem);
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {items.map((item, idx) => (
+          <div key={idx} className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+            <h4 className="font-semibold text-[#5C4A3A] mb-2">{item.name}</h4>
+            <div className="space-y-1">
+              {item.details.map((detail, i) => (
+                <p key={i} className="text-xs text-[#8B7355]">{detail}</p>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  if (stepNumber === 2 || stepNumber === 3) {
+    // Vendors - parse vendor list
+    const vendorLines = lines.filter(line => line.includes('vendors') || line.includes('Vendor') || line.includes('all_vendors') || line.includes('relevant_vendors'));
+    if (vendorLines.length > 0) {
+      return (
+        <div className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+          <p className="text-sm font-medium text-[#5C4A3A]">{vendorLines[0]}</p>
+        </div>
+      );
+    }
+  }
+  
+  if (stepNumber === 4) {
+    // Strategies
+    const strategyLines = lines.filter(line => line.includes('strategies') || line.includes('vendor_strategies'));
+    if (strategyLines.length > 0) {
+      return (
+        <div className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+          <p className="text-sm font-medium text-[#5C4A3A]">{strategyLines[0]}</p>
+        </div>
+      );
+    }
+  }
+  
+  if (stepNumber === 5) {
+    // Negotiation/Quotes
+    const quoteLines = lines.filter(line => line.includes('Negotiated') || line.includes('leaderboard') || line.includes('quotes'));
+    if (quoteLines.length > 0) {
+      return (
+        <div className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+          <p className="text-sm font-medium text-[#5C4A3A]">{quoteLines[0]}</p>
+        </div>
+      );
+    }
+  }
+  
+  if (stepNumber === 6) {
+    // Market analysis - parse into multiple cards
+    const analysisCards: Array<{ title: string; value: string }> = [];
+    
+    lines.forEach(line => {
+      if (line.trim().startsWith('•')) {
+        // Parse bullet points
+        const cleanLine = line.replace('•', '').trim();
+        if (cleanLine.includes('Best Price:')) {
+          const match = cleanLine.match(/Best Price:\s*(.+)/);
+          if (match) analysisCards.push({ title: 'Best Price', value: match[1].trim() });
+        } else if (cleanLine.includes('Median Price:')) {
+          const match = cleanLine.match(/Median Price:\s*(.+)/);
+          if (match) analysisCards.push({ title: 'Median Price', value: match[1].trim() });
+        } else if (cleanLine.includes('Vendor Rankings:')) {
+          const match = cleanLine.match(/Vendor Rankings:\s*(.+)/);
+          if (match) {
+            analysisCards.push({ title: 'Vendor Rankings', value: match[1].trim() });
+          } else {
+            analysisCards.push({ title: 'Vendor Rankings', value: 'Generated' });
+          }
+        } else if (cleanLine.includes('Final Comparison Report:')) {
+          const match = cleanLine.match(/Final Comparison Report:\s*(.+)/);
+          if (match) analysisCards.push({ title: 'Final Report', value: match[1].trim() });
+        }
+      } else if (line.includes('Best Price:')) {
+        const match = line.match(/Best Price:\s*(.+)/);
+        if (match) analysisCards.push({ title: 'Best Price', value: match[1].trim() });
+      } else if (line.includes('Median Price:')) {
+        const match = line.match(/Median Price:\s*(.+)/);
+        if (match) analysisCards.push({ title: 'Median Price', value: match[1].trim() });
+      } else if (line.includes('Vendor Rankings:')) {
+        const match = line.match(/Vendor Rankings:\s*(.+)/);
+        if (match) {
+          analysisCards.push({ title: 'Vendor Rankings', value: match[1].trim() });
+        } else {
+          analysisCards.push({ title: 'Vendor Rankings', value: 'Generated' });
+        }
+      } else if (line.includes('Final Comparison Report:')) {
+        const match = line.match(/Final Comparison Report:\s*(.+)/);
+        if (match) analysisCards.push({ title: 'Final Report', value: match[1].trim() });
+      }
+    });
+    
+    if (analysisCards.length > 0) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {analysisCards.map((card, idx) => (
+            <div key={idx} className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+              <h4 className="text-xs font-medium text-[#8B7355] mb-1">{card.title}</h4>
+              <p className="text-sm font-semibold text-[#5C4A3A]">{card.value}</p>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
+  
+  // Default: show as single card with formatted text
+  return (
+    <div className="bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/40 shadow-md">
+      <div className="text-sm text-[#6B5B4F] leading-relaxed whitespace-pre-line">
+        {output}
+      </div>
+    </div>
+  );
+}
+
 export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -135,7 +278,7 @@ export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
               {/* Step content */}
               <div className="flex-1">
                 <h3
-                  className={`text-base font-semibold mb-2 ${
+                  className={`text-base font-semibold mb-3 ${
                     step.status === "active"
                       ? "text-[#8B7355]"
                       : "text-[#5C4A3A]"
@@ -143,25 +286,23 @@ export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
                 >
                   {step.title}
                 </h3>
-                <div
-                  className={`bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md ${
-                    step.status === "active" ? "unfolding-delay" : ""
-                  }`}
-                >
-                  {step.output ? (
-                    <div className="text-sm text-[#6B5B4F] leading-relaxed whitespace-pre-line">
-                      {typeof step.output === 'string' ? (
-                        <div>{step.output}</div>
-                      ) : (
-                        step.output
-                      )}
-                    </div>
-                  ) : (
+                {step.output ? (
+                  <div className={`space-y-3 ${step.status === "active" ? "unfolding-delay" : ""}`}>
+                    {typeof step.output === 'string' ? (
+                      <OutputCards output={step.output} stepNumber={step.step} />
+                    ) : (
+                      <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md">
+                        {step.output}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md">
                     <p className="text-sm text-[#6B5B4F] leading-relaxed">
                       {step.message}
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

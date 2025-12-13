@@ -298,7 +298,7 @@ export default function Home() {
       const currency = item.currency || 'USD';
       const reqs = item.requirements || 'None';
       const urgency = item.urgency ? item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1) : 'Medium';
-      return `• ${qty}x ${item.name}\n  Budget: ${budget} ${currency}\n  Requirements: ${reqs}\n  Urgency: ${urgency}`;
+      return `• ${qty}x ${item.name}\nBudget: ${budget} ${currency}\nRequirements: ${reqs}\nUrgency: ${urgency}`;
     }).join('\n\n');
 
     const steps: OrderProgressStep[] = [
