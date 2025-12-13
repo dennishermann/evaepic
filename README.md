@@ -8,9 +8,14 @@ A full-stack web application with Next.js frontend and FastAPI backend.
 evaepic/
 ├── frontend/          # Next.js application
 │   ├── app/          # App Router pages and components
+│   ├── types/        # TypeScript type definitions
 │   ├── public/       # Static assets
 │   └── package.json  # Frontend dependencies
 └── backend/          # FastAPI application
+    ├── agents/       # LangChain agents
+    │   ├── tools/    # Custom agent tools
+    │   └── prompts/  # Prompt templates
+    ├── models/       # Pydantic data models
     ├── main.py       # FastAPI app entry point
     ├── pyproject.toml # Python dependencies
     └── .venv/        # Python virtual environment
@@ -29,6 +34,8 @@ evaepic/
 - **Python 3.12** - Programming language
 - **UV** - Fast Python package manager
 - **Uvicorn** - ASGI server
+- **LangChain** - AI agent framework
+- **LangGraph** - Agent workflow orchestration
 
 ## Prerequisites
 
@@ -98,11 +105,12 @@ source .venv/bin/activate
 # Install dependencies (already in pyproject.toml)
 uv sync
 
-# Optional: Create .env file for environment variables
-cat > .env << EOF
-# Add your environment variables here
-# CORS_ORIGINS=http://localhost:3000
-EOF
+# Create .env file from example template
+cp .env.example .env
+
+# Edit .env and add your API keys:
+# - OPENAI_API_KEY (required for LangChain agents)
+# - LANGCHAIN_API_KEY (optional, for LangSmith tracing)
 
 # Start the server
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
