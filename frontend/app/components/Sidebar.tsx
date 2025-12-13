@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useButton } from "@react-aria/button";
 import { useRef } from "react";
@@ -92,39 +93,40 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <div
       className={`
-        flex h-screen flex-col bg-slate-800 dark:bg-slate-900 transition-all duration-300 ease-in-out
+        relative flex h-screen flex-col bg-gradient-to-b from-[#8B7355]/80 via-[#6B5B4F]/75 to-[#8B7355]/80 backdrop-blur-2xl border-r border-white/30 shadow-2xl transition-all duration-300 ease-in-out group
         ${isCollapsed ? "w-20" : "w-64"}
       `}
     >
       {/* Logo at Top - Centered */}
-      <div className="flex h-20 items-center justify-between border-b border-slate-700 px-4">
+      <div className={`flex h-20 items-center ${isCollapsed ? "justify-center" : "justify-between"} border-b border-white/30 px-4`}>
         {isCollapsed ? (
           <div className="flex items-center justify-center w-full">
-            <h1 className="text-lg font-semibold text-white">E</h1>
+            <Image
+              src="/WhatsApp Image 2025-12-13 at 23.30.36.jpeg"
+              alt="EvaEpic Logo"
+              width={40}
+              height={40}
+              className="rounded-lg object-contain drop-shadow-md"
+            />
           </div>
         ) : (
-          <h1 className="text-lg font-semibold text-white">EvaEpic</h1>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/WhatsApp Image 2025-12-13 at 23.30.36.jpeg"
+              alt="EvaEpic Logo"
+              width={40}
+              height={40}
+              className="rounded-lg object-contain drop-shadow-md"
+            />
+            <h1 className="text-lg font-semibold text-white drop-shadow-md">EvaEpic</h1>
+          </div>
         )}
-        <button
-          {...buttonProps}
-          ref={toggleButtonRef}
-          className="ml-auto rounded-md p-1.5 text-yellow-400 hover:bg-slate-700 hover:text-yellow-300 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-slate-800"
-        >
-          {isCollapsed ? (
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          ) : (
+        {!isCollapsed && (
+          <button
+            {...buttonProps}
+            ref={toggleButtonRef}
+            className="ml-auto rounded-2xl p-1.5 text-[#FAF0E6] hover:bg-white/30 backdrop-blur-md hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-[#FAF0E6]/50 focus:ring-offset-2"
+          >
             <svg
               className="h-5 w-5"
               fill="none"
@@ -138,8 +140,29 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-          )}
-        </button>
+          </button>
+        )}
+        {isCollapsed && (
+          <button
+            {...buttonProps}
+            ref={toggleButtonRef}
+            className="absolute left-full ml-2 opacity-0 group-hover:opacity-100 rounded-2xl p-1.5 text-[#FAF0E6] hover:bg-white/30 backdrop-blur-md hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-[#FAF0E6]/50 focus:ring-offset-2 bg-gradient-to-br from-[#8B7355]/80 to-[#6B5B4F]/80 shadow-xl z-10"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Navigation Buttons - Centered in Middle */}
@@ -152,7 +175,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               key={item.name}
               href={item.href}
               className={`
-                group relative flex items-center ${isCollapsed ? "justify-center w-12 h-12" : "justify-start w-full px-3 h-12"} rounded-lg transition-all
+                group relative flex items-center ${isCollapsed ? "justify-center w-12 h-12" : "justify-start w-full px-3 h-12"} rounded-2xl transition-all
                 ${
                   isActive
                     ? "bg-slate-700 dark:bg-slate-600"
@@ -164,28 +187,28 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               <span
                 className={`
                   transition-colors relative flex-shrink-0
-                  ${
-                    isActive
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-gray-300"
-                  }
-                `}
-              >
+                ${
+                  isActive
+                      ? "text-white drop-shadow-sm"
+                      : "text-[#FAF0E6]/80 group-hover:text-white"
+                }
+              `}
+            >
                 {item.icon}
                 {hasNotification && (
-                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-yellow-400 rounded-full border-2 border-slate-800" />
+                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-[#DEB887] rounded-full border-2 border-white/40" />
                 )}
               </span>
               {!isCollapsed && (
-                <span className={`ml-3 text-sm font-medium ${isActive ? "text-white" : "text-gray-300"}`}>
+                <span className={`ml-3 text-sm font-medium ${isActive ? "text-white drop-shadow-sm" : "text-[#FAF0E6]/90"}`}>
                   {item.name}
                 </span>
               )}
               {isActive && isCollapsed && (
-                <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-400 rounded-l-full" />
+                <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#FAF0E6] rounded-l-full shadow-sm" />
               )}
               {isActive && !isCollapsed && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400 rounded-r-full" />
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#FAF0E6] rounded-r-full shadow-sm" />
               )}
             </Link>
           );
@@ -193,12 +216,12 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bottom Section - Settings and User Info */}
-      <div className="p-4 border-t border-slate-700 space-y-3">
+      <div className="p-4 border-t border-white/30 space-y-3">
         {/* Settings Button */}
         <Link
           href="/settings"
           className={`
-            flex items-center ${isCollapsed ? "justify-center w-12 h-12 mx-auto" : "justify-start w-full px-3 h-12"} rounded-lg transition-all
+            flex items-center ${isCollapsed ? "justify-center w-12 h-12 mx-auto" : "justify-start w-full px-3 h-12"} rounded-2xl transition-all
             ${
               pathname === "/settings"
                 ? "bg-slate-700 dark:bg-slate-600"
@@ -210,8 +233,8 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <svg
             className={`h-5 w-5 flex-shrink-0 ${
               pathname === "/settings"
-                ? "text-white"
-                : "text-gray-400 hover:text-gray-300"
+                ? "text-white drop-shadow-sm"
+                : "text-[#FAF0E6]/80 hover:text-white"
             }`}
             fill="none"
             viewBox="0 0 24 24"
@@ -230,7 +253,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             />
           </svg>
           {!isCollapsed && (
-            <span className={`ml-3 text-sm font-medium ${pathname === "/settings" ? "text-white" : "text-gray-300"}`}>
+            <span className={`ml-3 text-sm font-medium ${pathname === "/settings" ? "text-white drop-shadow-sm" : "text-[#FAF0E6]/90"}`}>
               Settings
             </span>
           )}
@@ -238,7 +261,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         {/* Logout Button */}
         <button
-          className={`flex items-center ${isCollapsed ? "justify-center w-12 h-12 mx-auto" : "justify-start w-full px-3 h-12"} rounded-lg transition-all hover:bg-slate-700/50 dark:hover:bg-slate-700/50 text-gray-400 hover:text-gray-300`}
+          className={`flex items-center ${isCollapsed ? "justify-center w-12 h-12 mx-auto" : "justify-start w-full px-3 h-12"} rounded-2xl transition-all hover:bg-white/20 backdrop-blur-sm text-[#FAF0E6]/80 hover:text-white`}
           title={isCollapsed ? "Logout" : undefined}
         >
           <svg
@@ -255,7 +278,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             />
           </svg>
           {!isCollapsed && (
-            <span className="ml-3 text-sm font-medium text-gray-300">Logout</span>
+            <span className="ml-3 text-sm font-medium text-[#FAF0E6]/90">Logout</span>
           )}
         </button>
 
@@ -266,15 +289,15 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               <div className="font-medium text-white text-sm truncate px-2">
                 {userName}
               </div>
-              <div className="text-xs text-gray-400 truncate px-2 mt-1">
+              <div className="text-xs text-[#FAF0E6]/70 truncate px-2 mt-1">
                 {userEmail}
-              </div>
+        </div>
             </div>
           </div>
         )}
         {isCollapsed && (
-          <div className="pt-4 border-t border-slate-700 flex justify-center">
-            <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-medium text-sm">
+          <div className="pt-4 border-t border-[#DEB887]/30 flex justify-center">
+            <div className="h-10 w-10 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white font-medium text-sm shadow-md">
               {userInitials}
             </div>
           </div>

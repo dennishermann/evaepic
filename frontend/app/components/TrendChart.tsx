@@ -16,7 +16,7 @@ export default function TrendChart({
 }: TrendChartProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div className="text-center py-8 text-[#8B7355]">
         No data available for chart
       </div>
     );
@@ -27,7 +27,7 @@ export default function TrendChart({
   return (
     <div className="space-y-4">
       {title && (
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <h3 className="text-sm font-medium text-[#5C4A3A]">
           {title}
         </h3>
       )}
@@ -37,14 +37,14 @@ export default function TrendChart({
           return (
             <div key={index} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700 dark:text-gray-300">
+                <span className="text-[#5C4A3A]">
                   {item.label}
                 </span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-[#5C4A3A]">
                   {item.value}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div className="w-full bg-white/40 backdrop-blur-sm rounded-full h-2.5 shadow-inner">
                 <div
                   className="h-2.5 rounded-full transition-all duration-500"
                   style={{

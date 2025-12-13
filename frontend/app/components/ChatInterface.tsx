@@ -20,7 +20,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your procurement assistant. How can I help you today?",
+      text: "Hello! I'm your procurement assistant. How can I help you today",
       sender: "assistant",
       timestamp: new Date(),
     },
@@ -96,11 +96,11 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col transition-transform duration-300">
+    <div className="fixed right-0 top-0 h-full w-96 bg-gradient-to-b from-[#FAF8F3]/90 via-[#F5F5DC]/85 to-[#FAF0E6]/90 backdrop-blur-xl border-l border-[#DEB887]/40 shadow-2xl z-50 flex flex-col transition-transform duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/30 bg-white/50 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center">
             <svg
               className="h-5 w-5 text-white"
               fill="none"
@@ -116,16 +116,16 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-[#5C4A3A]">
               Assistant
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
+            <p className="text-xs text-[#8B7355]">Online</p>
           </div>
         </div>
         <button
           {...closeButtonProps}
           ref={closeButtonRef}
-          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-2xl text-[#8B7355] hover:text-[#5C4A3A] hover:bg-white/60 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:ring-offset-2 transition-all"
         >
           <svg
             className="h-5 w-5"
@@ -144,7 +144,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-transparent via-[#FFF8DC]/30 to-transparent">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -153,18 +153,18 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             }`}
           >
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 shadow-sm ${
+              className={`max-w-[80%] rounded-3xl px-4 py-2 shadow-md ${
                 message.sender === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
+                  ? "bg-[#8B7355] text-white"
+                  : "bg-white/60 backdrop-blur-xl text-[#5C4A3A] border border-white/40"
               }`}
             >
               <p className="text-sm">{message.text}</p>
               <p
                 className={`text-xs mt-1 ${
                   message.sender === "user"
-                    ? "text-blue-100"
-                    : "text-gray-500 dark:text-gray-400"
+                  ? "text-[#FAF0E6]"
+                  : "text-[#8B7355]"
                 }`}
               >
                 {message.timestamp.toLocaleTimeString([], {
@@ -179,33 +179,13 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       </div>
 
       {/* Input */}
-      <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="p-6 border-t border-[#DEB887]/30 bg-white/30 backdrop-blur-md">
         <div className="relative flex items-center">
-          {/* Plus Icon Button */}
-          <button
-            className="absolute left-3 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Attach file or add options"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-          </button>
-          
           {/* Input Field */}
           <input
             {...inputProps}
             ref={inputRef}
-            className="w-full pl-12 pr-14 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full pl-4 pr-20 py-3 bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl text-[#5C4A3A] placeholder-[#8B7355] focus:outline-none focus:ring-2 focus:ring-[#8B7355] focus:border-transparent text-sm"
             placeholder="Send a message or @Assistant"
           />
           
@@ -213,24 +193,13 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
           <button
             {...sendButtonProps}
             ref={sendButtonRef}
-            className="absolute right-2 h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="absolute right-2 h-14 w-14 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] hover:from-[#6B5B4F] hover:to-[#5C4A3A] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:ring-offset-2 text-white font-semibold text-base shadow-lg hover:shadow-xl backdrop-blur-sm"
+            aria-label="Go!"
           >
-            <svg
-              className="h-4 w-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"
-              />
-            </svg>
+            <span>Go!</span>
           </button>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-1">
+        <p className="text-xs text-[#8B7355] mt-2 px-1">
           Assistant can make mistakes. Check important info.
         </p>
       </div>

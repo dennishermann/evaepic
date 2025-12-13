@@ -89,10 +89,10 @@ export default function Header({ onToggle, isCollapsed, pageTitle }: HeaderProps
   const unreadCount = mockNotifications.filter((n) => !n.read).length;
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <header className="flex h-16 items-center justify-between border-b border-white/30 bg-white/50 backdrop-blur-2xl px-6 shadow-lg">
       <div className="flex items-center gap-4">
         {pageTitle && (
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h2 className="text-base font-semibold text-[#5C4A3A] drop-shadow-sm">
             {pageTitle}
           </h2>
         )}
@@ -101,7 +101,7 @@ export default function Header({ onToggle, isCollapsed, pageTitle }: HeaderProps
         <button
           {...notificationsButtonProps}
           ref={notificationsButtonRef}
-          className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
+          className="relative rounded-lg p-2 text-[#8B7355] hover:bg-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:ring-offset-2 transition-all shadow-sm"
         >
           <svg
             className="h-5 w-5"
@@ -125,14 +125,14 @@ export default function Header({ onToggle, isCollapsed, pageTitle }: HeaderProps
         {isNotificationsOpen && (
           <div
             ref={notificationsPanelRef}
-            className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 z-50 max-h-96 overflow-hidden flex flex-col"
+            className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-white/70 via-[#FAF8F3]/60 to-white/70 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/40 z-50 max-h-96 overflow-hidden flex flex-col"
           >
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Notifications
+            <div className="px-4 py-3 border-b border-[#DEB887]/30 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#5C4A3A]">
+          Notifications
               </h3>
               {unreadCount > 0 && (
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                <span className="text-xs font-medium text-[#8B7355]">
                   {unreadCount} new
                 </span>
               )}
@@ -143,30 +143,30 @@ export default function Header({ onToggle, isCollapsed, pageTitle }: HeaderProps
                   No notifications
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-800">
+                <div className="divide-y divide-white/30">
                   {mockNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
+                      className={`px-4 py-3 hover:bg-white/50 backdrop-blur-md cursor-pointer transition-all rounded-xl ${
                         !notification.read
-                          ? "bg-blue-50/50 dark:bg-blue-900/10"
+                          ? "bg-[#FAF0E6]/50 backdrop-blur-md"
                           : ""
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <div className="text-sm font-medium text-[#5C4A3A]">
                             {notification.title}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <div className="text-xs text-[#8B7355] mt-1">
                             {notification.message}
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          <div className="text-xs text-[#8B7355]/70 mt-1">
                             {notification.time}
                           </div>
                         </div>
                         {!notification.read && (
-                          <div className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 mt-1 flex-shrink-0"></div>
+                          <div className="h-2 w-2 rounded-full bg-[#8B7355] mt-1 flex-shrink-0 shadow-sm"></div>
                         )}
                       </div>
                     </div>
@@ -175,10 +175,10 @@ export default function Header({ onToggle, isCollapsed, pageTitle }: HeaderProps
               )}
             </div>
             {mockNotifications.length > 0 && (
-              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-                <button className="w-full text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-center">
+              <div className="px-4 py-3 border-t border-white/30">
+                <button className="w-full text-sm font-medium text-[#8B7355] hover:text-[#6B5B4F] text-center transition-colors">
                   Mark all as read
-                </button>
+        </button>
               </div>
             )}
           </div>

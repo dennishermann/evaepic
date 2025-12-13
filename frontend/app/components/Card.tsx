@@ -7,10 +7,10 @@ interface CardProps {
 export default function Card({ title, children, className = "" }: CardProps) {
   return (
     <div
-      className={`rounded-lg bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 p-6 shadow-sm ${className}`}
+      className={`rounded-3xl bg-gradient-to-br from-white/60 via-[#FAF8F3]/50 to-white/60 backdrop-blur-2xl border border-white/40 p-6 shadow-2xl ${className}`}
     >
       {title && (
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <h2 className="text-base font-semibold text-[#5C4A3A] mb-4 drop-shadow-sm">
           {title}
         </h2>
       )}

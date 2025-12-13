@@ -94,7 +94,7 @@ export default function PlatformLayout({
         }}
       >
         <Header onToggle={handleToggle} isCollapsed={isCollapsed} pageTitle={pageTitle} />
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-6">
+        <main className="flex-1 overflow-y-auto bg-transparent p-6">
           {children}
         </main>
       </div>

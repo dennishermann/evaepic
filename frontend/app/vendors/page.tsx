@@ -61,7 +61,7 @@ export default function VendorsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-end">
-        <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <button className="rounded-lg bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] px-4 py-2 text-sm font-medium text-white hover:from-[#6B5B4F] hover:to-[#5C4A3A] transition-all shadow-lg hover:shadow-xl backdrop-blur-sm">
           + Add Vendor
         </button>
       </div>
@@ -85,52 +85,52 @@ export default function VendorsPage() {
         {[1, 2, 3, 4, 5, 6].map((item) => (
           <div
             key={item}
-            className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
+            className="rounded-3xl bg-gradient-to-br from-white/60 via-[#FAF8F3]/50 to-white/60 backdrop-blur-2xl p-6 shadow-2xl border border-white/40"
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-[#5C4A3A] drop-shadow-sm">
                   Vendor {item}
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm text-[#8B7355]">
                   vendor{item}@example.com
                 </p>
               </div>
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+              <span className="rounded-full bg-[#FAF0E6] px-3 py-1 text-xs font-medium text-[#6B5B4F] shadow-sm">
                 Active
               </span>
             </div>
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-[#8B7355]">
                   Total Orders:
                 </span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-[#5C4A3A]">
                   {item * 3}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-[#8B7355]">
                   Avg. Rating:
                 </span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-[#5C4A3A]">
                   {(4 + Math.random()).toFixed(1)} ⭐
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-[#8B7355]">
                   Category:
                 </span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-[#5C4A3A]">
                   Supplies
                 </span>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              <button className="flex-1 rounded-2xl bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] px-4 py-2 text-sm font-medium text-white hover:from-[#6B5B4F] hover:to-[#5C4A3A] transition-all shadow-xl hover:shadow-2xl backdrop-blur-md">
                 View Details
               </button>
-              <button className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+              <button className="rounded-2xl border border-white/40 px-4 py-2 text-sm font-medium text-[#5C4A3A] hover:bg-white/60 backdrop-blur-md transition-all shadow-md">
                 Contact
               </button>
             </div>

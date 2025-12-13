@@ -152,61 +152,61 @@ export default function DashboardPage() {
           <div className="text-center">
             <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
               {mockStats.activeOrders}
-            </div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
-              Active Orders
+      </div>
+            <div className="text-sm font-medium text-[#8B7355] mt-1">
+                Active Orders
             </div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <div className="text-2xl font-semibold text-orange-600 dark:text-orange-400">
+            <div className="text-2xl font-semibold text-[#DEB887] drop-shadow-sm">
               {mockStats.pendingQuotes}
             </div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
+            <div className="text-sm font-medium text-[#8B7355] mt-1">
               Pending Quotes
             </div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <div className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
+            <div className="text-2xl font-semibold text-[#8B7355] drop-shadow-sm">
               {mockStats.activeVendors}
             </div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
+            <div className="text-sm font-medium text-[#8B7355] mt-1">
               Active Vendors
             </div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <div className="text-2xl font-semibold text-green-600 dark:text-green-400">
+            <div className="text-2xl font-semibold text-[#6B5B4F] drop-shadow-sm">
               {formatCurrency(mockStats.totalSavings)}
             </div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
+            <div className="text-sm font-medium text-[#8B7355] mt-1">
               Total Savings
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <div className="text-xs text-[#8B7355] mt-1">
               +12.5% from last month
             </div>
           </div>
         </Card>
-      </div>
+        </div>
 
       {/* Analytics Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <div className="text-center">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Avg. Negotiation Time
             </p>
-            <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <p className="mt-2 text-3xl font-bold text-[#8B7355] drop-shadow-sm">
               2.4 days
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              </p>
+            <p className="mt-1 text-xs text-[#8B7355]">
               -15% improvement
-            </p>
-          </div>
+              </p>
+            </div>
         </Card>
         <Card>
           <div className="text-center">
@@ -216,23 +216,23 @@ export default function DashboardPage() {
             <p className="mt-2 text-3xl font-bold text-purple-600 dark:text-purple-400">
               87%
             </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-[#8B7355]">
               +5% from last month
             </p>
-          </div>
+            </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Completed Orders
-            </p>
-            <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              </p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {mockStats.completedOrders}
             </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-[#8B7355]">
               {mockStats.activeNegotiations} active negotiations
-            </p>
-          </div>
+              </p>
+            </div>
         </Card>
       </div>
 
@@ -299,16 +299,16 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No vendor performance data available
-            </div>
+          </div>
           )}
         </Card>
-      </div>
+        </div>
 
       {/* Order Completion Status */}
       {mockStats.completedOrders > 0 && (
         <Card title="Order Completion Status">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Completed
               </span>
@@ -331,8 +331,8 @@ export default function DashboardPage() {
               <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
                 {mockOrderStatus.pending}
               </span>
-            </div>
           </div>
+        </div>
         </Card>
       )}
 
@@ -343,13 +343,13 @@ export default function DashboardPage() {
             {mockRecentOrders.map((order) => (
               <div
                 key={order.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors border border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-3 bg-white/60 backdrop-blur-xl rounded-2xl cursor-pointer hover:bg-white/70 transition-all border border-white/40 shadow-md"
               >
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {order.title}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-[#8B7355] mt-1">
                     {order.vendor} • {formatCurrency(order.amount)} • {order.date}
                   </div>
                 </div>
@@ -373,13 +373,13 @@ export default function DashboardPage() {
             {mockRecentQuotes.map((quote) => (
               <div
                 key={quote.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors border border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-3 bg-white/60 backdrop-blur-xl rounded-2xl cursor-pointer hover:bg-white/70 transition-all border border-white/40 shadow-md"
               >
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {quote.title}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-[#8B7355] mt-1">
                     {quote.vendor} • {formatCurrency(quote.amount)} • {quote.date}
                   </div>
                 </div>
@@ -402,7 +402,7 @@ export default function DashboardPage() {
             <p className="text-gray-500 dark:text-gray-400">
               No procurement data available. Create orders and quotes to see dashboard statistics.
             </p>
-          </div>
+        </div>
         </Card>
       )}
 

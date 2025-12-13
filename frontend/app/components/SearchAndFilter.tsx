@@ -98,13 +98,13 @@ export default function SearchAndFilter({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full rounded-2xl border border-white/40 bg-white/60 backdrop-blur-xl px-4 py-2 text-sm text-[#5C4A3A] placeholder-[#8B7355]/70 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
         />
       </div>
       <button
         {...filterButtonProps}
         ref={filterButtonRef}
-        className={`${showFilterText ? "px-4 py-2 flex items-center gap-2" : "p-2"} rounded-lg border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        className={`${showFilterText ? "px-4 py-2 flex items-center gap-2" : "p-2"} rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md text-[#8B7355] hover:text-[#5C4A3A] hover:bg-white/70 transition-all focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50`}
       >
         <svg
           className="h-5 w-5"
@@ -126,12 +126,12 @@ export default function SearchAndFilter({
       {isFilterOpen && filterFields.length > 0 && (
         <div
           ref={filterPanelRef}
-          className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 p-4"
+          className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-white/95 via-[#FAF8F3]/90 to-white/95 backdrop-blur-xl rounded-lg shadow-2xl border border-[#DEB887]/40 z-50 p-4"
           style={{ right: 0 }}
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-[#5C4A3A] drop-shadow-sm">
                 Filters
               </h3>
               <button
@@ -157,7 +157,7 @@ export default function SearchAndFilter({
             <div className="space-y-3">
               {filterFields.map((field) => (
                 <div key={field.name}>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-medium text-[#5C4A3A] mb-1">
                     {field.label}
                   </label>
                   {field.type === "select" ? (
@@ -189,7 +189,7 @@ export default function SearchAndFilter({
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between pt-3 border-t border-white/30">
               <button
                 onClick={onClearFilters}
                 className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
@@ -198,7 +198,7 @@ export default function SearchAndFilter({
               </button>
               <button
                 onClick={onFilterToggle}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] text-white rounded-2xl hover:from-[#6B5B4F] hover:to-[#5C4A3A] text-sm font-medium transition-all shadow-xl hover:shadow-2xl backdrop-blur-md"
               >
                 Apply Filters
               </button>

@@ -37,7 +37,7 @@ export default function SettingsPage() {
         <button
           {...saveButtonProps}
           ref={saveButtonRef}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+          className="px-4 py-2 bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] text-white rounded-2xl hover:from-[#6B5B4F] hover:to-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:ring-offset-2 transition-all text-sm font-medium shadow-xl hover:shadow-2xl backdrop-blur-md"
         >
           Save Changes
         </button>
@@ -47,33 +47,33 @@ export default function SettingsPage() {
       <Card title="Profile">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Full Name
             </label>
             <input
               type="text"
               defaultValue="John Doe"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Email Address
             </label>
             <input
               type="email"
               defaultValue="john.doe@evaepic.com"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Job Title
             </label>
             <input
               type="text"
               defaultValue="Procurement Manager"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             />
           </div>
         </div>
@@ -84,10 +84,10 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-medium text-[#5C4A3A]">
                 Email Notifications
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-[#8B7355]">
                 Receive email updates about your orders and quotes
               </div>
             </div>
@@ -100,15 +100,15 @@ export default function SettingsPage() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-white/60 backdrop-blur-md peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#8B7355]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/40 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r from-[#8B7355] to-[#6B5B4F] shadow-md"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-medium text-[#5C4A3A]">
                 Push Notifications
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-[#8B7355]">
                 Receive browser push notifications
               </div>
             </div>
@@ -121,15 +121,15 @@ export default function SettingsPage() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-white/60 backdrop-blur-md peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#8B7355]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/40 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r from-[#8B7355] to-[#6B5B4F] shadow-md"></div>
             </label>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-medium text-[#5C4A3A]">
                 SMS Notifications
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-[#8B7355]">
                 Receive SMS alerts for critical updates
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function SettingsPage() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-white/60 backdrop-blur-md peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#8B7355]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/40 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r from-[#8B7355] to-[#6B5B4F] shadow-md"></div>
             </label>
           </div>
         </div>
@@ -152,7 +152,7 @@ export default function SettingsPage() {
       <Card title="Preferences">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Theme
             </label>
             <select
@@ -160,7 +160,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPreferences({ ...preferences, theme: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
@@ -168,7 +168,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Language
             </label>
             <select
@@ -176,7 +176,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPreferences({ ...preferences, language: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             >
               <option value="en">English</option>
               <option value="es">Spanish</option>
@@ -185,7 +185,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Currency
             </label>
             <select
@@ -193,7 +193,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPreferences({ ...preferences, currency: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             >
               <option value="USD">USD - US Dollar</option>
               <option value="EUR">EUR - Euro</option>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-[#5C4A3A] mb-1">
               Timezone
             </label>
             <select
@@ -210,7 +210,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPreferences({ ...preferences, timezone: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/40 rounded-2xl bg-white/60 backdrop-blur-xl text-[#5C4A3A] focus:outline-none focus:ring-2 focus:ring-[#8B7355]/50 focus:border-[#8B7355]/60 shadow-md"
             >
               <option value="UTC">UTC</option>
               <option value="America/New_York">America/New_York (EST)</option>
@@ -227,10 +227,10 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-medium text-[#5C4A3A]">
                 Two-Factor Authentication
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-[#8B7355]">
                 Add an extra layer of security to your account
               </div>
             </div>
@@ -240,10 +240,10 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-medium text-[#5C4A3A]">
                 Change Password
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-[#8B7355]">
                 Update your account password
               </div>
             </div>
