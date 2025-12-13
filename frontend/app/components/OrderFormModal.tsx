@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import SearchAndFilter from "./SearchAndFilter";
 import VendorSelectionView from "./VendorSelectionView";
 import ProductSearchView from "./ProductSearchView";
@@ -93,6 +94,18 @@ export default function OrderFormModal({
   onBackToReview,
   showBackToReview = false,
 }: OrderFormModalProps) {
+  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
+  const hasOrderItems = orderItems.length > 0;
+
+  // Auto-collapse search when order items are first added
+  useEffect(() => {
+    if (hasOrderItems) {
+      setIsSearchExpanded(false);
+    } else {
+      setIsSearchExpanded(true);
+    }
+  }, [hasOrderItems]);
+
   if (!isOpen) return null;
 
   return (
@@ -166,125 +179,274 @@ export default function OrderFormModal({
 
         {/* Modal Content */}
         <div className="flex-1 overflow-hidden p-6 flex flex-col">
-          {/* Search and Filter - Shows vendor search when product is selected, product search otherwise */}
-          <div className="mb-6">
-            {selectedProduct ? (
-              <SearchAndFilter
-                searchPlaceholder="Search vendors..."
-                searchLabel="Search vendors"
-                searchValue={vendorSearchQuery}
-                onSearchChange={onVendorSearchQueryChange}
-                isFilterOpen={isVendorFilterOpen}
-                onFilterToggle={onVendorFilterToggle}
-                filterFields={[
-                  {
-                    label: "Category",
-                    name: "category",
-                    type: "select",
-                    options: [
-                      { label: "All Categories", value: "all" },
-                      { label: "General", value: "General" },
-                      { label: "Electronics", value: "Electronics" },
-                      { label: "Furniture", value: "Furniture" },
-                      { label: "Lighting", value: "Lighting" },
-                    ],
-                  },
-                  {
-                    label: "Minimum Rating",
-                    name: "rating",
-                    type: "select",
-                    options: [
-                      { label: "All Ratings", value: "all" },
-                      { label: "4.5+ Stars", value: "4.5" },
-                      { label: "4.0+ Stars", value: "4.0" },
-                      { label: "3.5+ Stars", value: "3.5" },
-                      { label: "3.0+ Stars", value: "3.0" },
-                    ],
-                  },
-                ]}
-                filters={vendorFilters}
-                onFilterChange={(newFilters) => onVendorFiltersChange(newFilters as typeof vendorFilters)}
-                onClearFilters={onClearVendorFilters}
-                showFilterText={false}
-              />
-            ) : (
-              <SearchAndFilter
-                searchPlaceholder="Search products..."
-                searchLabel="Search products"
-                searchValue={searchQuery}
-                onSearchChange={onSearchQueryChange}
-                isFilterOpen={isFilterOpen}
-                onFilterToggle={onFilterToggle}
-                filterFields={[
-                  {
-                    label: "Category",
-                    name: "category",
-                    type: "select",
-                    options: [
-                      { label: "All Categories", value: "all" },
-                      { label: "Furniture", value: "Furniture" },
-                      { label: "Electronics", value: "Electronics" },
-                      { label: "Lighting", value: "Lighting" },
-                      { label: "Accessories", value: "Accessories" },
-                      { label: "Office Supplies", value: "Office Supplies" },
-                    ],
-                  },
-                  {
-                    label: "Price Range",
-                    name: "priceRange",
-                    type: "select",
-                    options: [
-                      { label: "All Prices", value: "all" },
-                      { label: "$0 - $50", value: "0-50" },
-                      { label: "$50 - $100", value: "50-100" },
-                      { label: "$100 - $200", value: "100-200" },
-                      { label: "$200+", value: "200+" },
-                    ],
-                  },
-                ]}
-                filters={filters}
-                onFilterChange={(newFilters) => onFiltersChange(newFilters as typeof filters)}
-                onClearFilters={onClearFilters}
-                showFilterText={false}
-              />
-            )}
-          </div>
+          {hasOrderItems ? (
+            /* When order items exist, show collapsed search on side and order items prominently */
+            <div className="flex gap-6 flex-1 min-h-0">
+              {/* Collapsed Search Sidebar */}
+              <div className={`flex flex-col transition-all duration-300 ${isSearchExpanded ? 'flex-1' : 'w-16'} border-r border-white/30 pr-6`}>
+                {isSearchExpanded ? (
+                  <>
+                    <div className="mb-4">
+                      <button
+                        onClick={() => setIsSearchExpanded(false)}
+                        className="mb-2 w-full flex items-center justify-end text-[#8B7355] hover:text-[#5C4A3A] text-sm"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      {selectedProduct ? (
+                        <SearchAndFilter
+                          searchPlaceholder="Search vendors..."
+                          searchLabel="Search vendors"
+                          searchValue={vendorSearchQuery}
+                          onSearchChange={onVendorSearchQueryChange}
+                          isFilterOpen={isVendorFilterOpen}
+                          onFilterToggle={onVendorFilterToggle}
+                          filterFields={[
+                            {
+                              label: "Category",
+                              name: "category",
+                              type: "select",
+                              options: [
+                                { label: "All Categories", value: "all" },
+                                { label: "General", value: "General" },
+                                { label: "Electronics", value: "Electronics" },
+                                { label: "Furniture", value: "Furniture" },
+                                { label: "Lighting", value: "Lighting" },
+                              ],
+                            },
+                            {
+                              label: "Minimum Rating",
+                              name: "rating",
+                              type: "select",
+                              options: [
+                                { label: "All Ratings", value: "all" },
+                                { label: "4.5+ Stars", value: "4.5" },
+                                { label: "4.0+ Stars", value: "4.0" },
+                                { label: "3.5+ Stars", value: "3.5" },
+                                { label: "3.0+ Stars", value: "3.0" },
+                              ],
+                            },
+                          ]}
+                          filters={vendorFilters}
+                          onFilterChange={(newFilters) => onVendorFiltersChange(newFilters as typeof vendorFilters)}
+                          onClearFilters={onClearVendorFilters}
+                          showFilterText={false}
+                        />
+                      ) : (
+                        <SearchAndFilter
+                          searchPlaceholder="Search products..."
+                          searchLabel="Search products"
+                          searchValue={searchQuery}
+                          onSearchChange={onSearchQueryChange}
+                          isFilterOpen={isFilterOpen}
+                          onFilterToggle={onFilterToggle}
+                          filterFields={[
+                            {
+                              label: "Category",
+                              name: "category",
+                              type: "select",
+                              options: [
+                                { label: "All Categories", value: "all" },
+                                { label: "Furniture", value: "Furniture" },
+                                { label: "Electronics", value: "Electronics" },
+                                { label: "Lighting", value: "Lighting" },
+                                { label: "Accessories", value: "Accessories" },
+                                { label: "Office Supplies", value: "Office Supplies" },
+                              ],
+                            },
+                            {
+                              label: "Price Range",
+                              name: "priceRange",
+                              type: "select",
+                              options: [
+                                { label: "All Prices", value: "all" },
+                                { label: "$0 - $50", value: "0-50" },
+                                { label: "$50 - $100", value: "50-100" },
+                                { label: "$100 - $200", value: "100-200" },
+                                { label: "$200+", value: "200+" },
+                              ],
+                            },
+                          ]}
+                          filters={filters}
+                          onFilterChange={(newFilters) => onFiltersChange(newFilters as typeof filters)}
+                          onClearFilters={onClearFilters}
+                          showFilterText={false}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      {selectedProduct ? (
+                        <VendorSelectionView
+                          selectedProduct={selectedProduct}
+                          filteredVendors={filteredVendors}
+                          selectedVendors={selectedVendors}
+                          vendorSearchQuery={vendorSearchQuery}
+                          vendorFilters={vendorFilters}
+                          isVendorFilterOpen={isVendorFilterOpen}
+                          onBackToProducts={onBackToProducts}
+                          onVendorSearchChange={onVendorSearchQueryChange}
+                          onVendorFilterToggle={onVendorFilterToggle}
+                          onVendorFilterChange={onVendorFiltersChange}
+                          onClearVendorFilters={onClearVendorFilters}
+                          onToggleVendorSelection={onToggleVendorSelection}
+                          onAddSelectedVendors={onAddSelectedVendors}
+                        />
+                      ) : (
+                        <ProductSearchView
+                          searchResults={searchResults}
+                          onAddProduct={onAddProduct}
+                        />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsSearchExpanded(true)}
+                    className="mt-2 p-2 rounded-2xl bg-white/60 backdrop-blur-md border border-white/40 text-[#8B7355] hover:text-[#5C4A3A] hover:bg-white/70 transition-all"
+                    title="Expand search"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-            {/* Left Side - Search Results or Vendor Selection */}
-            <div className="flex flex-col min-h-0">
-              {selectedProduct ? (
-                <VendorSelectionView
-                  selectedProduct={selectedProduct}
-                  filteredVendors={filteredVendors}
-                  selectedVendors={selectedVendors}
-                  vendorSearchQuery={vendorSearchQuery}
-                  vendorFilters={vendorFilters}
-                  isVendorFilterOpen={isVendorFilterOpen}
-                  onBackToProducts={onBackToProducts}
-                  onVendorSearchChange={onVendorSearchQueryChange}
-                  onVendorFilterToggle={onVendorFilterToggle}
-                  onVendorFilterChange={onVendorFiltersChange}
-                  onClearVendorFilters={onClearVendorFilters}
-                  onToggleVendorSelection={onToggleVendorSelection}
-                  onAddSelectedVendors={onAddSelectedVendors}
+              {/* Order Items - Takes full remaining space */}
+              <div className="flex-1 min-h-0">
+                <OrderItemsList
+                  orderItems={orderItems}
+                  onRemoveItem={onRemoveItem}
+                  onUpdateQuantity={onUpdateQuantity}
+                  formatCurrency={formatCurrency}
                 />
-              ) : (
-                <ProductSearchView
-                  searchResults={searchResults}
-                  onAddProduct={onAddProduct}
-                />
-              )}
+              </div>
             </div>
+          ) : (
+            /* When no order items, show normal layout */
+            <>
+              <div className="mb-6">
+                {selectedProduct ? (
+                  <SearchAndFilter
+                    searchPlaceholder="Search vendors..."
+                    searchLabel="Search vendors"
+                    searchValue={vendorSearchQuery}
+                    onSearchChange={onVendorSearchQueryChange}
+                    isFilterOpen={isVendorFilterOpen}
+                    onFilterToggle={onVendorFilterToggle}
+                    filterFields={[
+                      {
+                        label: "Category",
+                        name: "category",
+                        type: "select",
+                        options: [
+                          { label: "All Categories", value: "all" },
+                          { label: "General", value: "General" },
+                          { label: "Electronics", value: "Electronics" },
+                          { label: "Furniture", value: "Furniture" },
+                          { label: "Lighting", value: "Lighting" },
+                        ],
+                      },
+                      {
+                        label: "Minimum Rating",
+                        name: "rating",
+                        type: "select",
+                        options: [
+                          { label: "All Ratings", value: "all" },
+                          { label: "4.5+ Stars", value: "4.5" },
+                          { label: "4.0+ Stars", value: "4.0" },
+                          { label: "3.5+ Stars", value: "3.5" },
+                          { label: "3.0+ Stars", value: "3.0" },
+                        ],
+                      },
+                    ]}
+                    filters={vendorFilters}
+                    onFilterChange={(newFilters) => onVendorFiltersChange(newFilters as typeof vendorFilters)}
+                    onClearFilters={onClearVendorFilters}
+                    showFilterText={false}
+                  />
+                ) : (
+                  <SearchAndFilter
+                    searchPlaceholder="Search products..."
+                    searchLabel="Search products"
+                    searchValue={searchQuery}
+                    onSearchChange={onSearchQueryChange}
+                    isFilterOpen={isFilterOpen}
+                    onFilterToggle={onFilterToggle}
+                    filterFields={[
+                      {
+                        label: "Category",
+                        name: "category",
+                        type: "select",
+                        options: [
+                          { label: "All Categories", value: "all" },
+                          { label: "Furniture", value: "Furniture" },
+                          { label: "Electronics", value: "Electronics" },
+                          { label: "Lighting", value: "Lighting" },
+                          { label: "Accessories", value: "Accessories" },
+                          { label: "Office Supplies", value: "Office Supplies" },
+                        ],
+                      },
+                      {
+                        label: "Price Range",
+                        name: "priceRange",
+                        type: "select",
+                        options: [
+                          { label: "All Prices", value: "all" },
+                          { label: "$0 - $50", value: "0-50" },
+                          { label: "$50 - $100", value: "50-100" },
+                          { label: "$100 - $200", value: "100-200" },
+                          { label: "$200+", value: "200+" },
+                        ],
+                      },
+                    ]}
+                    filters={filters}
+                    onFilterChange={(newFilters) => onFiltersChange(newFilters as typeof filters)}
+                    onClearFilters={onClearFilters}
+                    showFilterText={false}
+                  />
+                )}
+              </div>
 
-            {/* Right Side - Order List */}
-            <OrderItemsList
-              orderItems={orderItems}
-              onRemoveItem={onRemoveItem}
-              onUpdateQuantity={onUpdateQuantity}
-              formatCurrency={formatCurrency}
-            />
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+                {/* Left Side - Search Results or Vendor Selection */}
+                <div className="flex flex-col min-h-0">
+                  {selectedProduct ? (
+                    <VendorSelectionView
+                      selectedProduct={selectedProduct}
+                      filteredVendors={filteredVendors}
+                      selectedVendors={selectedVendors}
+                      vendorSearchQuery={vendorSearchQuery}
+                      vendorFilters={vendorFilters}
+                      isVendorFilterOpen={isVendorFilterOpen}
+                      onBackToProducts={onBackToProducts}
+                      onVendorSearchChange={onVendorSearchQueryChange}
+                      onVendorFilterToggle={onVendorFilterToggle}
+                      onVendorFilterChange={onVendorFiltersChange}
+                      onClearVendorFilters={onClearVendorFilters}
+                      onToggleVendorSelection={onToggleVendorSelection}
+                      onAddSelectedVendors={onAddSelectedVendors}
+                    />
+                  ) : (
+                    <ProductSearchView
+                      searchResults={searchResults}
+                      onAddProduct={onAddProduct}
+                    />
+                  )}
+                </div>
+
+                {/* Right Side - Order List */}
+                <OrderItemsList
+                  orderItems={orderItems}
+                  onRemoveItem={onRemoveItem}
+                  onUpdateQuantity={onUpdateQuantity}
+                  formatCurrency={formatCurrency}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Modal Footer */}

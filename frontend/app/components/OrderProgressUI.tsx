@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-interface OrderProgressStep {
-  step: number;
-  status: "pending" | "active" | "completed";
-  title: string;
-  message: string;
-}
+import { OrderProgressStep } from "../types/order";
 
 interface OrderProgressUIProps {
   progress: OrderProgressStep[];
@@ -154,9 +148,19 @@ export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
                     step.status === "active" ? "unfolding-delay" : ""
                   }`}
                 >
-                  <p className="text-sm text-[#6B5B4F] leading-relaxed">
-                    {step.message}
-                  </p>
+                  {step.output ? (
+                    <div className="text-sm text-[#6B5B4F] leading-relaxed whitespace-pre-line">
+                      {typeof step.output === 'string' ? (
+                        <div>{step.output}</div>
+                      ) : (
+                        step.output
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#6B5B4F] leading-relaxed">
+                      {step.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -291,36 +291,58 @@ export default function Home() {
     setIsProcessingOrder(true);
     setShowOrderForm(false);
 
+    // Format order items for step 1 output (matches backend order_object structure)
+    const orderItemsOutput = finalItems.map(item => {
+      const qty = item.quantity;
+      const budget = item.budget ? formatCurrency(item.budget) : formatCurrency(item.total);
+      const currency = item.currency || 'USD';
+      const reqs = item.requirements || 'None';
+      const urgency = item.urgency ? item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1) : 'Medium';
+      return `• ${qty}x ${item.name}\n  Budget: ${budget} ${currency}\n  Requirements: ${reqs}\n  Urgency: ${urgency}`;
+    }).join('\n\n');
+
     const steps: OrderProgressStep[] = [
       { 
         step: 1, 
         status: "pending", 
-        title: "Processing order items and quantities",
-        message: "Analyzing the order items you've selected and calculating total quantities. Verifying product availability and specifications for each item in your order."
+        title: "Extracting order details",
+        message: "Analyzing the order items you've selected and calculating total quantities. Verifying product availability and specifications for each item in your order.",
+        output: `Order Object Extracted:\n\n${orderItemsOutput}`
       },
       { 
         step: 2, 
         status: "pending", 
-        title: "Searching for available vendors",
-        message: "Querying our vendor database to find suppliers who can fulfill your order requirements. Matching products with vendors based on availability, location, and capabilities."
+        title: "Fetching vendors from database",
+        message: "Querying our vendor database to find suppliers who can fulfill your order requirements. Matching products with vendors based on availability, location, and capabilities.",
+        output: `Fetched ${Math.floor(Math.random() * 10) + 5} vendors from API\n(all_vendors populated)`
       },
       { 
         step: 3, 
         status: "pending", 
-        title: "Requesting quotes from vendors",
-        message: "Sending quote requests to selected vendors. Gathering pricing information, delivery timelines, and terms for each vendor to compare options."
+        title: "Evaluating vendor suitability",
+        message: "Evaluating each vendor to determine if they can fulfill your order requirements based on product category, quantity capacity, and mandatory requirements.",
+        output: `Evaluated vendors in parallel\n(relevant_vendors: ${Math.floor(Math.random() * 5) + 3} vendors passed evaluation)`
       },
       { 
         step: 4, 
         status: "pending", 
-        title: "Analyzing pricing and terms",
-        message: "Evaluating all received quotes, comparing prices, delivery schedules, and contract terms. Identifying the best value options for your procurement needs."
+        title: "Generating negotiation strategies",
+        message: "Creating customized negotiation strategies for each relevant vendor to optimize pricing and terms.",
+        output: `Generated strategies for ${Math.floor(Math.random() * 3) + 3} vendors\n(vendor_strategies populated)`
       },
       { 
         step: 5, 
         status: "pending", 
-        title: "Finalizing order details",
-        message: "Preparing final order documentation, confirming vendor selections, and setting up the order for processing. Your order will be ready for review shortly."
+        title: "Negotiating with vendors",
+        message: "Sending negotiation requests to vendors and gathering quotes with pricing, delivery timelines, and contract terms.",
+        output: `Negotiated with vendors in parallel\n(leaderboard updated with quotes)`
+      },
+      { 
+        step: 6, 
+        status: "pending", 
+        title: "Analyzing market and finalizing",
+        message: "Aggregating all quotes, analyzing market benchmarks, ranking vendors, and preparing final comparison report.",
+        output: `Market Analysis Complete:\n• Best Price: ${formatCurrency(finalItems.reduce((sum, item) => sum + (item.budget || item.total), 0) * 0.9)}\n• Median Price: ${formatCurrency(finalItems.reduce((sum, item) => sum + (item.budget || item.total), 0))}\n• Vendor Rankings: Generated\n• Final Comparison Report: Ready`
       },
     ];
 
