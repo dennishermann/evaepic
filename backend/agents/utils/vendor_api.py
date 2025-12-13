@@ -1,12 +1,13 @@
 """
-Vendor API Client (STUB)
+Vendor API Client
 
-Will eventually handle communication with external vendor APIs.
-For now, just placeholder methods.
+Handles communication with external vendor APIs.
 """
 
 import logging
-from typing import List, Dict, Any
+import requests
+from typing import List, Dict, Any, Optional
+from requests.exceptions import RequestException, Timeout, ConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -33,24 +34,98 @@ class VendorAPIClient:
         self.api_base_url = api_base_url or "https://api.vendors.example.com"
         logger.info(f"[VENDOR_API] Initialized with base URL: {self.api_base_url}")
     
-    async def get_all_vendors(self, category: str = None) -> List[Dict[str, Any]]:
+    def get_all_vendors(self, team_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        Stub: Fetch all vendors from external API.
+        Fetch all vendors from external API.
         
-        Will eventually:
-        - Make HTTP request to vendor API
-        - Filter by category if specified
-        - Return list of vendor objects
+        Makes HTTP GET request to /vendors/ endpoint with optional team_id filter.
+        Includes retry logic for transient failures.
         
         Args:
-            category: Optional category filter
+            team_id: Optional team ID to filter vendors
             
         Returns:
             List of vendor dictionaries
+            
+        Raises:
+            Exception: If API request fails after retries
         """
-        logger.info(f"[VENDOR_API] Stub: get_all_vendors(category={category})")
-        logger.warning("[VENDOR_API] Not implemented - would fetch from external API")
-        return []
+        endpoint = f"{self.api_base_url}/vendors/"
+        params = {}
+        if team_id is not None:
+            params['team_id'] = team_id
+            
+        logger.info(f"[VENDOR_API] Fetching vendors from {endpoint} with params: {params}")
+        
+        # Retry logic for transient failures
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                response = requests.get(
+                    endpoint,
+                    params=params,
+                    timeout=30  # 30 second timeout
+                )
+                
+                # Log response status
+                logger.info(f"[VENDOR_API] Response status: {response.status_code}")
+                
+                # Raise exception for HTTP errors (4xx, 5xx)
+                response.raise_for_status()
+                
+                # Parse JSON response
+                vendors = response.json()
+                
+                if not isinstance(vendors, list):
+                    logger.error(f"[VENDOR_API] Expected list response, got {type(vendors)}")
+                    raise ValueError("Invalid response format: expected list of vendors")
+                
+                logger.info(f"[VENDOR_API] Successfully fetched {len(vendors)} vendors")
+                return vendors
+                
+            except Timeout as e:
+                retry_count += 1
+                logger.warning(f"[VENDOR_API] Timeout (attempt {retry_count}/{max_retries}): {e}")
+                if retry_count >= max_retries:
+                    logger.error(f"[VENDOR_API] Max retries reached for timeout")
+                    raise Exception(f"Failed to fetch vendors: Request timeout after {max_retries} attempts")
+                    
+            except ConnectionError as e:
+                retry_count += 1
+                logger.warning(f"[VENDOR_API] Connection error (attempt {retry_count}/{max_retries}): {e}")
+                if retry_count >= max_retries:
+                    logger.error(f"[VENDOR_API] Max retries reached for connection error")
+                    raise Exception(f"Failed to fetch vendors: Connection error after {max_retries} attempts")
+                    
+            except requests.HTTPError as e:
+                # Don't retry on client errors (4xx), only on server errors (5xx)
+                if 400 <= response.status_code < 500:
+                    logger.error(f"[VENDOR_API] Client error {response.status_code}: {e}")
+                    raise Exception(f"Failed to fetch vendors: HTTP {response.status_code}")
+                else:
+                    retry_count += 1
+                    logger.warning(f"[VENDOR_API] Server error (attempt {retry_count}/{max_retries}): {e}")
+                    if retry_count >= max_retries:
+                        logger.error(f"[VENDOR_API] Max retries reached for server error")
+                        raise Exception(f"Failed to fetch vendors: HTTP {response.status_code} after {max_retries} attempts")
+                        
+            except ValueError as e:
+                # JSON parsing error - don't retry
+                logger.error(f"[VENDOR_API] JSON parsing error: {e}")
+                raise Exception(f"Failed to fetch vendors: Invalid JSON response")
+                
+            except RequestException as e:
+                # Generic request exception
+                retry_count += 1
+                logger.warning(f"[VENDOR_API] Request error (attempt {retry_count}/{max_retries}): {e}")
+                if retry_count >= max_retries:
+                    logger.error(f"[VENDOR_API] Max retries reached for request error")
+                    raise Exception(f"Failed to fetch vendors: {str(e)}")
+        
+        # Should not reach here, but just in case
+        raise Exception("Failed to fetch vendors: Unknown error")
     
     async def send_negotiation_message(
         self,

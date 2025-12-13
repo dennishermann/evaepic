@@ -6,7 +6,6 @@ This is the only node with full implementation - others are stubs.
 """
 
 import logging
-import os
 from typing import Dict, Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
