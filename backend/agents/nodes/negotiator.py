@@ -10,11 +10,14 @@ import re
 import requests
 import json
 import time
-from typing import Dict, Any, TypedDict, Optional
+from typing import Dict, Any, TypedDict, Optional, List, Literal
 from pydantic import BaseModel, Field
 
 from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID
 from agents.utils.conversation_api import ConversationAPIClient
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
+from agents.config import DEFAULT_MODEL, DEFAULT_TEMPERATURE
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ class NegotiateInput(TypedDict):
     market_analysis: Optional[Dict[str, Any]]  # Market analysis from aggregator
     conversation_id: Optional[str]  # Existing conversation ID (if any)
     last_offer: Optional[Dict[str, Any]]  # Last offer from this vendor
+    product_id: Optional[str]  # Specific product ID being negotiated
 
 
 class OfferSnapshot(BaseModel):
@@ -42,7 +46,7 @@ class OfferSnapshot(BaseModel):
     vendor_id: str = Field(description="Vendor identifier")
     vendor_name: str = Field(description="Vendor name")
     conversation_id: str = Field(description="Conversation ID for this negotiation")
-    round_index: int = Field(description="Current negotiation round")
+    round_index: int = Field(description="Current negotiation round (internal)")
     price_total: Optional[float] = Field(default=None, description="Total price offered")
     currency: str = Field(default="USD", description="Currency code")
     delivery_days: Optional[int] = Field(default=None, description="Delivery time in days")
@@ -50,299 +54,335 @@ class OfferSnapshot(BaseModel):
     notes: str = Field(default="", description="Additional notes or details")
     status: str = Field(default="in_progress", description="Status: in_progress, finalized, walked_away")
     last_vendor_message: str = Field(default="", description="Last message from vendor")
+    
+    # Internal metrics from analysis
+    sentiment: str = Field(default="neutral", description="Vendor sentiment: flexible, firm, etc.")
+
+    # Enhanced fields for final reporting
+    final_offer_summary: str = Field(default="", description="Formatted summary of the deal (items + price)")
+    bundled_items: List[str] = Field(default_factory=list, description="List of items included in the offer")
+    list_price: Optional[float] = Field(default=None, description="Original list price before negotiation")
+    final_price: Optional[float] = Field(default=None, description="Final negotiated price")
+
+
+class DealExtraction(BaseModel):
+    """Extracted details from the full negotiation transcript"""
+    final_price: Optional[float] = Field(description="Final negotiated price agreed upon")
+    list_price: Optional[float] = Field(description="Original list price mentioned")
+    bundled_items: List[str] = Field(description="List of all items included in the final deal")
+    summary: str = Field(description="One-line summary of the offer (e.g., 'Item A + Item B for $X')")
+    deal_status: Literal["finalized", "in_progress", "walked_away", "no_deal"] = Field(description="Final status of the negotiation")
+
+
+class VendorResponseAnalysis(BaseModel):
+    """LLM analysis of a single vendor response"""
+    has_offer: bool = Field(description="Does the response contain a specific price/offer?")
+    price: Optional[float] = Field(default=None, description="Extracted price if available")
+    currency: Optional[str] = Field(default=None, description="Currency if available")
+    sentiment: Literal["flexible", "firm", "deal_agreed", "refused", "info_needed", "neutral"] = Field(description="Vendor's negotiation stance")
+    reasoning: str = Field(description="Reasoning for the sentiment classification")
+    next_action_suggestion:  Literal["continue", "accept", "walk_away", "clarify"] = Field(description="Suggested next action")
 
 
 def create_conversation(vendor_id: str, title: str) -> Optional[str]:
-    """
-    Create a new conversation with a vendor.
-    
-    Args:
-        vendor_id: Vendor identifier
-        title: Conversation title
-        
-    Returns:
-        Conversation ID or None if failed
-    """
-    # Use configured team_id or default to 1
+    """Create a new conversation with a vendor."""
     team_id = TEAM_ID if TEAM_ID else 1
     return api_client.create_conversation(vendor_id, team_id, title)
 
 
 def send_message(conversation_id: str, message: str) -> Optional[str]:
-    """
-    Send a message in a conversation.
-    
-    Args:
-        conversation_id: Conversation identifier
-        message: Message content to send
-        
-    Returns:
-        Vendor's response message or None if failed
-    """
+    """Send a message in a conversation."""
     return api_client.send_message(conversation_id, message)
 
 
-def extract_offer_from_response(response: str, vendor_id: str, vendor_name: str, conversation_id: str, round_index: int) -> OfferSnapshot:
-    """
-    Extract offer details from vendor's response using simple pattern matching.
-    
-    Args:
-        response: Vendor's response message
-        vendor_id: Vendor identifier
-        vendor_name: Vendor name
-        conversation_id: Conversation ID
-        round_index: Current round
-        
-    Returns:
-        OfferSnapshot with extracted information
-    """
-    # Initialize with defaults
-    offer = OfferSnapshot(
-        vendor_id=str(vendor_id),
-        vendor_name=vendor_name,
-        conversation_id=str(conversation_id),
-        round_index=round_index,
-        last_vendor_message=response,
-        status="in_progress"
-    )
-    
-    # Extract price (look for patterns like $1,234.56, 1234.56, etc.)
-    price_patterns = [
-        r'\$\s*([0-9,]+\.?[0-9]*)',  # $1,234.56
-        r'([0-9,]+\.?[0-9]*)\s*(?:USD|dollars|EUR|euros)',  # 1234.56 USD
-        r'(?:price|total|cost).*?([0-9,]+\.?[0-9]*)',  # price: 1234.56
-    ]
-    
-    for pattern in price_patterns:
-        match = re.search(pattern, response, re.IGNORECASE)
-        if match:
-            price_str = match.group(1).replace(',', '')
-            try:
-                offer.price_total = float(price_str)
-                logger.info(f"[NEGOTIATOR] Extracted price: ${offer.price_total:.2f}")
-                break
-            except ValueError:
-                continue
-    
-    # Extract delivery time (look for patterns like "5 days", "2 weeks", etc.)
-    delivery_patterns = [
-        r'(\d+)\s*days?',
-        r'(\d+)\s*weeks?',
-        r'delivery.*?(\d+)',
-    ]
-    
-    for pattern in delivery_patterns:
-        match = re.search(pattern, response, re.IGNORECASE)
-        if match:
-            days = int(match.group(1))
-            if 'week' in match.group(0).lower():
-                days *= 7
-            offer.delivery_days = days
-            logger.info(f"[NEGOTIATOR] Extracted delivery: {offer.delivery_days} days")
-            break
-    
-    # Extract payment terms
-    payment_keywords = ['net 30', 'net 60', 'payment', 'terms', 'advance', 'upfront']
-    for keyword in payment_keywords:
-        if keyword in response.lower():
-            # Extract surrounding context
-            idx = response.lower().find(keyword)
-            context = response[max(0, idx-20):min(len(response), idx+50)]
-            offer.payment_terms = context.strip()
-            logger.info(f"[NEGOTIATOR] Extracted payment terms: {offer.payment_terms[:50]}...")
-            break
-    
-    # Extract currency
-    if '$' in response or 'usd' in response.lower() or 'dollar' in response.lower():
-        offer.currency = "USD"
-    elif '€' in response or 'eur' in response.lower() or 'euro' in response.lower():
-        offer.currency = "EUR"
-    
-    return offer
+# Number of max internal turns to prevent infinite loops (safety brake)
+# This is "turns" as in exchanges (User -> Vendor -> User).
+MAX_SESSION_TURNS = 15
 
 
-def compose_negotiation_message(
-    strategy: Dict[str, Any],
-    round_index: int,
-    market_analysis: Optional[Dict[str, Any]] = None,
-    last_offer: Optional[OfferSnapshot] = None
-) -> str:
+class NegotiationAgent:
     """
-    Compose a negotiation message based on strategy and market feedback.
-    
-    Args:
-        strategy: StrategyPlan as dict
-        round_index: Current round (0 = first contact)
-        market_analysis: Market analysis from aggregator (if available)
-        last_offer: Last offer received from this vendor
-        
-    Returns:
-        Message to send to vendor
+    Agent that handles a multi-turn negotiation conversation with a single vendor.
+    Runs a continuous loop until a deal is reached or broken.
     """
-    vendor_id = strategy.get("vendor_id", "unknown")
-    
-    # First contact: use opening message from strategy
-    if round_index == 0:
-        message = strategy.get("opening_message", "Hello, we would like to discuss a potential order.")
-        logger.info(f"[NEGOTIATOR] Round 0: Using opening message for vendor {vendor_id}")
-        return message
-    
-    # Subsequent rounds: use market analysis to apply pressure
-    if market_analysis and last_offer:
-        vendor_overrides = market_analysis.get("vendor_overrides", {}).get(vendor_id, {})
-        best_price = market_analysis.get("benchmarks", {}).get("best_price")
-        pressure_level = vendor_overrides.get("pressure_level", "medium")
-        suggested_move = vendor_overrides.get("suggested_next_move", "")
-        walkaway_recommended = vendor_overrides.get("walkaway_recommended", False)
+    def __init__(self, vendor_id: str, vendor_name: str, strategy: Dict[str, Any]):
+        self.vendor_id = vendor_id
+        self.vendor_name = vendor_name
+        self.strategy = strategy
+        self.llm = ChatAnthropic(
+            model=DEFAULT_MODEL,
+            temperature=DEFAULT_TEMPERATURE
+        )
+        self.structured_analyzer = self.llm.with_structured_output(VendorResponseAnalysis)
+        self.deal_extractor = self.llm.with_structured_output(DealExtraction)
+
+    def analyze_response(self, vendor_response: str, history: List[Dict[str, str]]) -> VendorResponseAnalysis:
+        """
+        Analyze the vendor's response to extract price and sentiment.
+        """
+        prompt = f"""You are analyzing a negotiation response from a vendor.
         
-        logger.info(f"[NEGOTIATOR] Round {round_index}: Pressure level = {pressure_level}")
+RESPONSE: "{vendor_response}"
+
+CONTEXT:
+We are negotiating for: {self.strategy.get("objective")}
+Our Target: ${self.strategy.get("price_targets", {}).get("target")}
+Our Walk-away: ${self.strategy.get("price_targets", {}).get("walk_away")}
+
+PREVIOUS EXCHANGES:
+{json.dumps(history[-3:], indent=2) if history else "None"}
+
+INSTRUCTIONS:
+1. Extract any price mentioned.
+2. Determine the vendor's sentiment:
+   - 'flexible': Willing to negotiate, asking for counter-offer.
+   - 'firm': Stated a final price, refused to lower further.
+   - 'deal_agreed': Explicitly agreed to our terms/price.
+   - 'refused': Refused to do business or walked away.
+   - 'info_needed': asking for clarification (e.g. quantity).
+   - 'neutral': General conversation.
+3. Suggest next action.
+
+Return JSON matching the schema.
+"""
+        try:
+            return self.structured_analyzer.invoke(prompt)
+        except Exception as e:
+            logger.error(f"[NEGOTIATOR] Analysis failed: {e}")
+            return VendorResponseAnalysis(
+                has_offer=False, 
+                sentiment="neutral", 
+                reasoning="Analysis failed", 
+                next_action_suggestion="continue"
+            )
+
+    def extract_final_deal_details(self, history: List[Dict[str, str]]) -> DealExtraction:
+        """
+        Parse the full negotiation transcript to extract final deal details.
+        """
+        transcript = "\n".join([f"{t['role'].upper()}: {t['content']}" for t in history])
         
-        if walkaway_recommended:
-            message = f"Thank you for your offer. Unfortunately, it exceeds our budget constraints. We'll need to explore other options."
-            logger.info(f"[NEGOTIATOR] Vendor {vendor_id}: Walk-away recommended")
-        elif best_price and last_offer.price_total and last_offer.price_total > best_price:
-            # Competitive pressure
-            price_gap = last_offer.price_total - best_price
-            message = f"Thank you for your offer of ${last_offer.price_total:.2f}. However, we have received a competing offer at ${best_price:.2f}. "
-            
-            if pressure_level == "high":
-                message += f"To move forward with you, we would need you to match or beat this price. Can you improve your offer?"
-            elif pressure_level == "medium":
-                message += f"We value working with you, but there's a ${price_gap:.2f} gap. Can you adjust your pricing?"
+        prompt = f"""You are an expert contract analyst.
+Review the following negotiation transcript and extract the final deal details.
+Pay close attention to BUNDLED items (e.g. "Coffee Machine + Grinder").
+
+TRANSCRIPT:
+{transcript}
+
+INSTRUCTIONS:
+1. Identify the FINAL negotiated price.
+2. Identify the ORIGINAL list price (if mentioned).
+3. List ALL items included in the final deal (e.g. ["Eagle One", "Mythos II Pure", "Installation"]).
+4. Write a concise summary string (e.g. "Eagle One + Mythos II Pure (incl. Install) for $25,000").
+5. Determine the final status (finalized, in_progress, etc.).
+
+Return JSON matching the schema.
+"""
+        try:
+            return self.deal_extractor.invoke(prompt)
+        except Exception as e:
+            logger.error(f"[NEGOTIATOR] Deal extraction failed: {e}")
+            return DealExtraction(
+                final_price=None,
+                list_price=None,
+                bundled_items=[],
+                summary="Extraction failed",
+                deal_status="in_progress"
+            )
+
+    def generate_message(
+        self, 
+        history: List[Dict[str, str]], 
+        analysis: Optional[VendorResponseAnalysis],
+        product_id: Optional[str]
+    ) -> str:
+        """
+        Generate the next message to send to the vendor.
+        """
+        # Context construction
+        context = f"""You are an expert procurement negotiator representing an enterprise buyer.
+You are negotiating with {self.vendor_name} (ID: {self.vendor_id}).
+
+YOUR STRATEGY:
+- Objective: {self.strategy.get("objective")}
+- Tone: {self.strategy.get("tone")} (Chat/Messaging style)
+- Price Targets: Anchor=${self.strategy.get("price_targets", {}).get("anchor")}, Target=${self.strategy.get("price_targets", {}).get("target")}, Walk-away=${self.strategy.get("price_targets", {}).get("walk_away")}
+- Key Arguments: {", ".join(self.strategy.get("arguments", []))}
+
+CONTEXT:
+- Product ID: {product_id if product_id else "General item"}
+- Current Analysis: {analysis.reasoning if analysis else "Start of conversation"}
+- Suggested Action: {analysis.next_action_suggestion if analysis else "Open negotiation"}
+
+COMPETITION CONTEXT:
+- We are evaluating other vendors securely. 
+- IF ASKED about other vendors: Say "We are evaluating a few other competitive options" but DO NOT disclose specific names or their prices.
+- Use the competition as leverage ONLY if necessary ("We have other offers closer to our target").
+
+INSTRUCTIONS:
+- Draft the next short, professional CHAT message.
+- NO "Subject:" lines. This is instant messaging.
+- Be concise (1-3 sentences max).
+- If 'deal_agreed', confirm the details and ask for next steps (PO, invoice).
+- If 'firm' and price is above walk-away, politely withdraw.
+- If 'firm' and price is good, accept it.
+- If 'flexible', push towards target price using arguments.
+"""
+
+        # Chat history
+        messages = [SystemMessage(content=context)]
+        
+        # Simplified transcript
+        transcript = "\n".join([f"{t['role'].upper()}: {t['content']}" for t in history])
+        
+        final_prompt = f"""
+CONVERSATION HISTORY:
+{transcript}
+
+Your turn. Draft the message:"""
+
+        messages.append(HumanMessage(content=final_prompt))
+        
+        response = self.llm.invoke(messages)
+        return response.content.strip()
+
+    def run_negotiation_session(
+        self,
+        conversation_id: str,
+        product_id: Optional[str]
+    ) -> Dict[str, Any]:
+        """
+        Run the full negotiation session until conclusion (or safety limit).
+        """
+        history = []
+        turns = 0
+        best_offer: Optional[OfferSnapshot] = None
+        current_price = None
+        consecutive_firm_responses = 0
+        
+        # Initial status
+        session_status = "completed"
+        
+        while turns < MAX_SESSION_TURNS:
+            # 1. Generate Message
+            if turns == 0:
+                # Use strategy opening, ensure no Subject line
+                msg_text = self.strategy.get("opening_message", "Hello.")
+                # Clean up if strategy generated a subject line despite instructions
+                if "Subject:" in msg_text:
+                    msg_text = msg_text.split("Subject:")[-1].split("\n", 1)[-1].strip()
             else:
-                message += f"We're comparing options. Is there any flexibility in your pricing?"
+                msg_text = self.generate_message(history, last_analysis, product_id)
+
+            logger.info(f"[NEGOTIATOR] {self.vendor_name} (Turn {turns}): Sending: {msg_text}")
             
-            logger.info(f"[NEGOTIATOR] Vendor {vendor_id}: Applying competitive pressure (${price_gap:.2f} gap)")
-        else:
-            # General improvement request
-            message = f"Thank you for your offer. {suggested_move if suggested_move else 'Can you provide your best possible terms?'}"
-            logger.info(f"[NEGOTIATOR] Vendor {vendor_id}: General improvement request")
-    else:
-        # Fallback message
-        message = "Thank you for your previous response. Can you provide your best pricing and terms?"
-        logger.info(f"[NEGOTIATOR] Vendor {vendor_id}: Fallback message (no market analysis)")
-    
-    return message
+            # 2. Send
+            vendor_response = send_message(conversation_id, msg_text)
+            if not vendor_response:
+                logger.error("[NEGOTIATOR] Failed to send/receive.")
+                session_status = "error"
+                break
+                
+            logger.info(f"[NEGOTIATOR] {self.vendor_name} (Turn {turns}): Received: {vendor_response}")
+            
+            # Update history
+            history.append({"role": "agent", "content": msg_text})
+            history.append({"role": "vendor", "content": vendor_response})
+            
+            # 3. Analyze Response
+            last_analysis = self.analyze_response(vendor_response, history)
+            
+            # 4. Check Termination Conditions
+            
+            # A. Deal Agreed
+            if last_analysis.sentiment == "deal_agreed":
+                logger.info("[NEGOTIATOR] Deal agreed!")
+                break
+                
+            # B. Walk Away / Refused
+            if last_analysis.sentiment == "refused" or last_analysis.next_action_suggestion == "walk_away":
+                 logger.info("[NEGOTIATOR] Negotiation ended (refused/walk-away).")
+                 break
+
+            # C. Firm Price (Stalling)
+            if last_analysis.sentiment == "firm":
+                consecutive_firm_responses += 1
+                if consecutive_firm_responses >= 2:
+                    logger.info("[NEGOTIATOR] Vendor is firm twice in a row. Stopping.")
+                    break
+            else:
+                consecutive_firm_responses = 0
+                
+            turns += 1
+
+        # 5. Final Deal Extraction (Post-Session)
+        logger.info("[NEGOTIATOR] running final deal extraction...")
+        deal_details = self.extract_final_deal_details(history)
+        
+        # Create final offer snapshot
+        best_offer = OfferSnapshot(
+            vendor_id=str(self.vendor_id),
+            vendor_name=self.vendor_name,
+            conversation_id=conversation_id,
+            round_index=0,
+            price_total=deal_details.final_price,
+            currency="USD", # Defaulting for now
+            status=deal_details.deal_status,
+            last_vendor_message=history[-1]["content"] if history else "No response",
+            sentiment="final",
+            
+            # New fields
+            final_offer_summary=deal_details.summary,
+            bundled_items=deal_details.bundled_items,
+            list_price=deal_details.list_price,
+            final_price=deal_details.final_price
+        )
+            
+        return best_offer, history
 
 
 def negotiate_node(input_data: NegotiateInput) -> Dict[str, Any]:
     """
-    Negotiate with a single vendor using their strategy plan.
-    
-    This node:
-    1. Creates or reuses conversation with vendor
-    2. Composes message based on strategy and market feedback
-    3. Sends message to vendor API
-    4. Extracts offer details from response
-    5. Updates negotiation history and leaderboard
-    
-    Note: This node runs in parallel for each vendor (map operation)
-    
-    Args:
-        input_data: Contains vendor_id, vendor_name, strategy, round_index,
-                   market_analysis, conversation_id, last_offer
-        
-    Returns:
-        Dict with updated negotiation_history, leaderboard, and conversation_ids
+    Negotiate with a single vendor using the multi-turn NegotiationAgent.
     """
     vendor_id = input_data["vendor_id"]
     vendor_name = input_data["vendor_name"]
     strategy = input_data["strategy"]
-    round_index = input_data["round_index"]
-    market_analysis = input_data.get("market_analysis")
     conversation_id = input_data.get("conversation_id")
-    last_offer_dict = input_data.get("last_offer")
+    product_id = input_data.get("product_id")
     
     logger.info("=" * 60)
-    logger.info(f"[NEGOTIATOR] Negotiating with {vendor_name} (Round {round_index})")
-    logger.info("=" * 60)
-    print(f"[NEGOTIATOR] Negotiating with {vendor_name} (Round {round_index})...", flush=True)
+    logger.info(f"[NEGOTIATOR] Starting negotiation session with {vendor_name}")
+    print(f"[NEGOTIATOR] 💬 contacting {vendor_name}...", flush=True)
     
-    # Convert last_offer dict to OfferSnapshot if available
-    last_offer = None
-    if last_offer_dict:
-        try:
-            last_offer = OfferSnapshot(**last_offer_dict)
-        except Exception as e:
-            logger.warning(f"[NEGOTIATOR] Could not parse last offer: {e}")
-    
-    # Create or reuse conversation
+    # 1. Setup Conversation
     if not conversation_id:
-        conversation_id = create_conversation(vendor_id, f"Procurement Negotiation - {vendor_name}")
+        conversation_id = create_conversation(vendor_id, f"Negotiation {vendor_name}")
         if not conversation_id:
-            logger.error(f"[NEGOTIATOR] Failed to create conversation for {vendor_name}")
-            return {
-                "negotiation_history": {
-                    vendor_id: [{
-                        "round": round_index,
-                        "status": "error",
-                        "message": "Failed to create conversation"
-                    }]
-                },
-                "leaderboard": {},
-                "conversation_ids": {}
-            }
-        logger.info(f"[NEGOTIATOR] Created new conversation: {conversation_id}")
-    else:
-        logger.info(f"[NEGOTIATOR] Reusing conversation: {conversation_id}")
+            logger.error("Failed to create conversation")
+            return {"leaderboard": {}} 
+            
+    # 2. Run Agent (Full Session)
+    agent = NegotiationAgent(vendor_id, vendor_name, strategy)
+    offer, history = agent.run_negotiation_session(conversation_id, product_id)
     
-    # Compose message
-    message = compose_negotiation_message(strategy, round_index, market_analysis, last_offer)
-    
-    # Send message and get response
-    vendor_response = send_message(conversation_id, message)
-    
-    if not vendor_response:
-        logger.error(f"[NEGOTIATOR] Failed to get response from {vendor_name}")
-        return {
-            "negotiation_history": {
-                vendor_id: [{
-                    "round": round_index,
-                    "status": "error",
-                    "message": "Failed to get vendor response"
-                }]
-            },
-            "leaderboard": {}
-        }
-    
-    # Extract offer from response
-    offer = extract_offer_from_response(vendor_response, vendor_id, vendor_name, conversation_id, round_index)
-    
-    # Check walk-away condition
-    walk_away_price = strategy.get("price_targets", {}).get("walk_away", float('inf'))
-    if offer.price_total and offer.price_total > walk_away_price:
-        logger.warning(f"[NEGOTIATOR] {vendor_name}: Price ${offer.price_total:.2f} exceeds walk-away ${walk_away_price:.2f}")
-        offer.status = "walked_away"
-    
-    # Log results
-    logger.info(f"[NEGOTIATOR] ✓ Negotiation round {round_index} completed for {vendor_name}")
-    if offer.price_total:
-        logger.info(f"[NEGOTIATOR]   Price: ${offer.price_total:.2f} {offer.currency}")
-    if offer.delivery_days:
-        logger.info(f"[NEGOTIATOR]   Delivery: {offer.delivery_days} days")
-    logger.info(f"[NEGOTIATOR]   Status: {offer.status}")
-    logger.info("=" * 60)
-    
-    print(f"[NEGOTIATOR] ✓ {vendor_name} offered: ${offer.price_total} (Delivery: {offer.delivery_days} days)", flush=True)
-    
-    # Update negotiation history
+    # 3. Format Output
+    price_display = f"${offer.price_total}" if offer.price_total else "No Offer"
+    print(f"[NEGOTIATOR]    -> Final Result: {price_display} ({offer.status})", flush=True)
+
+    # Return structure needed for graph state
     history_entry = {
-        "round": round_index,
-        "conversation_id": conversation_id,
-        "message_sent": message,
-        "response_received": vendor_response,
+        "round": 0,
+        "turns": history,
         "offer": offer.model_dump()
     }
-    
-    # Update leaderboard with latest offer
-    leaderboard_entry = offer.model_dump()
     
     return {
         "negotiation_history": {
             vendor_id: [history_entry]
         },
         "leaderboard": {
-            vendor_id: leaderboard_entry
+            vendor_id: offer.model_dump()
         },
         "conversation_ids": {
             vendor_id: conversation_id

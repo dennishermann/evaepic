@@ -39,3 +39,6 @@ NEGOTIATION_TEAM_ID = os.getenv("NEGOTIATION_TEAM_ID")
 
 # Maximum negotiation rounds
 MAX_NEGOTIATION_ROUNDS = int(os.getenv("MAX_NEGOTIATION_ROUNDS", "2"))
+
+# Maximum vendors to process for now (temporary limit)
+MAX_VENDORS_LIMIT = int(os.getenv("MAX_VENDORS_LIMIT", "2"))

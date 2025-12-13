@@ -21,3 +21,4 @@ class Vendor(BaseModel):
     category: List[str] = Field(default_factory=list, description="Product categories this vendor supplies")
     rating: Optional[float] = Field(default=None, description="Vendor rating (0-5)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional vendor information")
+    relevant_product_id: Optional[str] = Field(default=None, description="ID of the specific product matched")

@@ -67,9 +67,12 @@ Be intelligent about:
 
 def validate_order(order: OrderObject) -> bool:
     """Validates the extracted order object"""
-    if order.budget <= 0:
-        logger.warning(f"Validation failed: Budget is non-positive ({order.budget})")
+    if order.budget < 0:
+        logger.warning(f"Validation failed: Budget is negative ({order.budget})")
         return False
+    if order.budget == 0:
+        logger.warning("Budget is 0, assuming unlimited/unknown budget.")
+
     if order.quantity.min <= 0:
         logger.warning(f"Validation failed: Minimum quantity is non-positive ({order.quantity.min})")
         return False

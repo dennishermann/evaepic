@@ -7,7 +7,7 @@ Fetches vendors from external API.
 import logging
 from typing import Dict, Any, List
 from agents.utils.vendor_api import VendorAPIClient
-from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID
+from agents.config import NEGOTIATION_API_BASE, NEGOTIATION_TEAM_ID, MAX_VENDORS_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,10 @@ def fetch_vendors_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Fetch vendors from API
         vendors = client.get_all_vendors(team_id=team_id)
+        
+        if MAX_VENDORS_LIMIT > 0:
+            vendors = vendors[:MAX_VENDORS_LIMIT]
+            logger.info(f"[DATABASE_FETCHER] Limited to {len(vendors)} vendors (MAX_VENDORS_LIMIT={MAX_VENDORS_LIMIT})")
         
         logger.info(f"[DATABASE_FETCHER] Retrieved {len(vendors)} vendors from API")
         

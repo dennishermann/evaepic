@@ -1,16 +1,21 @@
 """
 Vendor Evaluator Node
 
-Uses LLM to determine vendor relevance (yes/no decision).
+Uses LLM to determine vendor relevance (yes/no decision) and extracts specific product ID.
 Each vendor is evaluated in parallel as part of a map operation.
 """
 
 import logging
-from typing import Dict, Any, TypedDict
+import base64
+import os
+import mimetypes
+from pathlib import Path
+from typing import Dict, Any, TypedDict, List, Optional
 from pydantic import BaseModel, Field, ValidationError
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.messages import HumanMessage
 
 from models.order import OrderObject
 from models.vendor import Vendor
@@ -25,13 +30,17 @@ class EvaluateInput(TypedDict):
 
 
 class SuitabilityResult(BaseModel):
-    """YES or NO - can this vendor deliver?"""
+    """Result of vendor suitability evaluation."""
     suitable: bool = Field(description="YES (True) or NO (False)")
     reasoning: str = Field(description="One sentence why")
+    product_id: Optional[str] = Field(default=None, description="The ID of the most relevant product found in the catalog. REQUIRED if suitable is True.")
+
+
+from agents.utils.file_utils import get_file_message_content
 
 
 class RelevantVendorEvaluatorAgent:
-    """Simple YES/NO filter - can vendor deliver the product?"""
+    """Evaluates if a vendor can deliver the product and finds the specific product ID."""
 
     def __init__(self):
         self.llm = ChatAnthropic(
@@ -40,62 +49,85 @@ class RelevantVendorEvaluatorAgent:
         )
         self.parser = PydanticOutputParser(pydantic_object=SuitabilityResult)
         
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """You evaluate if a vendor can deliver an order. For the 'suitable' field, respond with a boolean 'true' or 'false'.
+        # We construct the messages dynamically in evaluate() now to handle attachments
+        
+    def evaluate(self, vendor: Vendor, order: OrderObject) -> SuitabilityResult:
+        """
+        Evaluate if a vendor can deliver an order using their documents.
+        """
+        
+        # SYSTEM PROMPT
+        system_text = f"""You evaluate if a vendor can deliver an order by checking their documents (catalogs, price lists). 
 
-'true' if:
-- Vendor's category matches the order item
-- They can handle the quantity
-- They meet mandatory requirements
+Your goal is to find ONE single product ID that best matches the order requirements.
 
-'false' if:
-- Product mismatch
-- Cannot handle quantity
-- Missing mandatory requirements
+RESPOND IN JSON FORMAT.
 
-{format_instructions}"""),
-            ("human", """Can this vendor deliver?
+OUTPUT RULES:
+1. 'suitable': boolean. True ONLY if you find a specific product that matches the order.
+2. 'product_id': The exact ID of the matching product found in the documents. REQUIRED if suitable is True.
+3. 'reasoning': Brief explanation.
+
+CRITERIA FOR 'TRUE':
+- You found a specific product in the provided documents that matches the requested item.
+- The product ID is clearly identifiable.
+
+CRITERIA FOR 'FALSE':
+- No matching product found in documents.
+- Vendor category matches but no specific product details are in the documents.
+- Cannot handle quantity (if specified in docs).
+
+{self.parser.get_format_instructions()}
+"""
+
+        # HUMAN PROMPT CONTEXT
+        human_text = f"""Can this vendor deliver?
 
 VENDOR:
-Name: {vendor_name}
-Categories: {vendor_category}
-Rating: {vendor_rating}/5
+Name: {vendor.name}
+Categories: {", ".join(vendor.category)}
+Rating: {vendor.rating}/5
 
 ORDER:
-Item: {order_item}
-Quantity: {order_quantity_preferred} units
-Requirements: {order_requirements_mandatory}
+Item: {order.item}
+Quantity: {order.quantity.preferred} units
+Requirements: {", ".join(order.requirements.mandatory) if order.requirements.mandatory else "None"}
 
-""")
-        ])
+Please analyze the attached documents to find the product.
+"""
         
-        self.chain = self.prompt | self.llm | self.parser
+        # Build message content list
+        content_blocks = []
+        content_blocks.append({"type": "text", "text": human_text})
+        
+        # Attach documents
+        found_docs_count = 0
+        for doc in vendor.documents:
+            filename = doc.get("filename")
+            if filename:
+                block = get_file_message_content(filename)
+                if block:
+                    content_blocks.append(block)
+                    found_docs_count += 1
+        
+        if found_docs_count == 0:
+            logger.warning(f"[EVALUATOR] No readable documents found for {vendor.name}")
+            # We add a note that no docs were available, so rely on metadata only (likely False unless very generic)
+            content_blocks.append({"type": "text", "text": "\n[WARNING: No documents could be loaded. Evaluate based on metadata only, but be strict.]"})
 
-    def evaluate(self, vendor: Vendor, order: OrderObject) -> bool:
-        """
-        Evaluate if a vendor can deliver an order.
+        # Create message payload
+        messages = [
+            ("system", system_text),
+            HumanMessage(content=content_blocks)
+        ]
         
-        Args:
-            vendor: Vendor object to evaluate
-            order: Order requirements
-            
-        Returns:
-            True if vendor is suitable, False otherwise
-        """
+        # Execute chain
+        chain = self.llm | self.parser
+        
         try:
-            result = self.chain.invoke({
-                "vendor_name": vendor.name,
-                "vendor_category": ", ".join(vendor.category),
-                "vendor_rating": vendor.rating,
-                "order_item": order.item,
-                "order_quantity_preferred": order.quantity.preferred,
-                "order_requirements_mandatory": ", ".join(order.requirements.mandatory) if order.requirements.mandatory else "None",
-                "format_instructions": self.parser.get_format_instructions()
-            })
-            
-            logger.debug(f"[EVALUATOR] {vendor.name}: {result.reasoning}")
-            return result.suitable
-            
+            result = chain.invoke(messages)
+            logger.debug(f"[EVALUATOR] {vendor.name}: {result.reasoning} (ID: {result.product_id})")
+            return result
         except Exception as e:
             logger.error(f"[EVALUATOR] Error evaluating {vendor.name}: {e}")
             raise
@@ -103,45 +135,37 @@ Requirements: {order_requirements_mandatory}
 
 def evaluate_vendor_node(input_data: EvaluateInput) -> Dict[str, Any]:
     """
-    LangGraph node function that evaluates a single vendor's relevance to the order.
-    
-    This node runs in parallel for each vendor (map operation).
-    The relevant_vendors field uses a list merger to accumulate results from parallel nodes.
-    
-    Args:
-        input_data: Dict containing 'vendor' and 'order_requirements'
-        
-    Returns:
-        Dict with relevant_vendors containing [vendor] if relevant, or [] if not
+    LangGraph node function.
     """
     vendor_dict = input_data["vendor"]
     order_dict = input_data["order_requirements"]
     
+    if not order_dict:
+        logger.error(f"[EVALUATOR] Missing order requirements for {vendor_dict.get('name')}")
+        return {"relevant_vendors": []}
+    
     try:
-        # Convert dicts to Pydantic models
         vendor = Vendor(**vendor_dict)
         order = OrderObject(**order_dict)
         
-        # Initialize agent and evaluate
         agent = RelevantVendorEvaluatorAgent()
         
         print(f"[EVALUATOR] Evaluating: {vendor.name} ...", flush=True)
-        is_relevant = agent.evaluate(vendor, order)
+        result = agent.evaluate(vendor, order)
         
-        # Return in LangGraph format
-        if is_relevant:
-            print(f"[EVALUATOR] ✓ {vendor.name} - RELEVANT", flush=True)
-            logger.info(f"[EVALUATOR] ✓ {vendor.name} - RELEVANT")
-            return {"relevant_vendors": [vendor_dict]}
+        if result.suitable:
+            print(f"[EVALUATOR] ✓ {vendor.name} - RELEVANT (Product ID: {result.product_id})", flush=True)
+            logger.info(f"[EVALUATOR] ✓ {vendor.name} - RELEVANT (ID: {result.product_id})")
+            
+            # Inject the found product ID into the vendor dict for downstream nodes
+            vendor_dict_out = vendor_dict.copy()
+            vendor_dict_out["relevant_product_id"] = result.product_id
+            return {"relevant_vendors": [vendor_dict_out]}
         else:
             print(f"[EVALUATOR] ✗ {vendor.name} - NOT RELEVANT", flush=True)
             logger.info(f"[EVALUATOR] ✗ {vendor.name} - NOT RELEVANT")
             return {"relevant_vendors": []}
             
-    except ValidationError as e:
-        print(f"[EVALUATOR] Error invalid input for {vendor_dict.get('name')}: {e}", flush=True)
-        logger.error(f"[EVALUATOR] Invalid input data for vendor {vendor_dict.get('name', 'Unknown')}: {e}")
-        return {"relevant_vendors": []}
     except Exception as e:
         vendor_name = vendor_dict.get('name', 'Unknown')
         print(f"[EVALUATOR] CRITICAL ERROR with {vendor_name}: {e}", flush=True)

@@ -27,6 +27,7 @@ class VendorRanking(BaseModel):
     vendor_name: str = Field(description="Vendor name")
     rank: int = Field(description="Rank (1 = best)")
     score: float = Field(description="Calculated score")
+    price: float = Field(description="Price offered")
     reason: str = Field(description="Reason for ranking")
 
 
@@ -107,7 +108,7 @@ def calculate_vendor_score(offer: Dict[str, Any], best_price: float, order: Dict
         score += 50 * 0.25
     
     # Payment terms score (15% weight)
-    payment_terms = offer.get("payment_terms", "")
+    payment_terms = offer.get("payment_terms") or ""
     if "net 30" in payment_terms.lower() or "30 days" in payment_terms.lower():
         score += 80 * 0.15
     elif "net 60" in payment_terms.lower() or "60 days" in payment_terms.lower():
@@ -123,20 +124,21 @@ def calculate_vendor_score(offer: Dict[str, Any], best_price: float, order: Dict
 def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[str, Any], rounds_completed: int) -> MarketAnalysis:
     """
     Create market analysis from current leaderboard.
-    
-    Args:
-        leaderboard: Current offers from all vendors
-        order: Order requirements
-        rounds_completed: Current round number
-        
-    Returns:
-        MarketAnalysis with benchmarks and rankings
     """
-    # Filter out vendors with no price
-    valid_offers = {vid: offer for vid, offer in leaderboard.items() if offer.get("price_total") is not None}
-    
+    # Filter valid offers (must have price)
+    valid_offers = {}
+    for vid, offer in leaderboard.items():
+        # Ensure offer is a dict
+        if not isinstance(offer, dict):
+             if hasattr(offer, "model_dump"):
+                 offer = offer.model_dump()
+             else:
+                 offer = dict(offer)
+                 
+        if offer.get("price_total") and float(offer.get("price_total", 0)) > 0:
+            valid_offers[vid] = offer
+            
     if not valid_offers:
-        logger.warning("[AGGREGATOR] No valid offers with prices")
         return MarketAnalysis(
             round_index=rounds_completed,
             benchmarks=MarketBenchmarks(total_vendors=0),
@@ -146,7 +148,7 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
         )
     
     # Calculate benchmarks
-    prices = [offer["price_total"] for offer in valid_offers.values()]
+    prices = [float(offer["price_total"]) for offer in valid_offers.values()]
     best_price = min(prices)
     median_price = median(prices) if len(prices) > 1 else best_price
     spread = ((max(prices) - best_price) / best_price * 100) if best_price > 0 else 0
@@ -161,24 +163,34 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
     logger.info(f"[AGGREGATOR] Benchmarks: Best=${best_price:.2f}, Median=${median_price:.2f}, Spread={spread:.1f}%")
     
     # Calculate scores and rank vendors
-    vendor_scores = []
-    for vendor_id, offer in valid_offers.items():
+    scored_vendors = []
+    for vendor_id_raw, offer in valid_offers.items():
         score = calculate_vendor_score(offer, best_price, order)
-        vendor_scores.append({
-            "vendor_id": vendor_id,
-            "vendor_name": offer.get("vendor_name", "Unknown"),
+        
+        # Safe string conversion
+        vendor_id_str = str(vendor_id_raw)
+        if hasattr(offer, "get"):
+             v_name = offer.get("vendor_name", "Unknown")
+             v_price = offer.get("price_total")
+        else:
+             v_name = "Unknown"
+             v_price = 0
+             
+        scored_vendors.append({
+            "vendor_id": vendor_id_str,
+            "vendor_name": v_name,
             "score": score,
-            "price": offer.get("price_total"),
+            "price": v_price,
             "offer": offer
         })
     
     # Sort by score (descending)
-    vendor_scores.sort(key=lambda x: x["score"], reverse=True)
+    scored_vendors.sort(key=lambda x: x["score"], reverse=True)
     
     # Create rankings
     rankings = []
-    for rank, vendor_data in enumerate(vendor_scores, 1):
-        price = vendor_data["price"]
+    for rank, v_data in enumerate(scored_vendors, 1):
+        price = float(v_data["price"]) if v_data["price"] else 0.0
         delta = price - best_price if price else 0
         
         if rank == 1:
@@ -189,24 +201,34 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
             reason = f"Higher price: ${price:.2f} (${delta:.2f} above best)"
         
         rankings.append(VendorRanking(
-            vendor_id=vendor_data["vendor_id"],
-            vendor_name=vendor_data["vendor_name"],
+            vendor_id=v_data["vendor_id"], # Already str
+            vendor_name=v_data["vendor_name"],
             rank=rank,
-            score=vendor_data["score"],
+            score=v_data["score"],
+            price=price,
             reason=reason
         ))
     
     # Create vendor-specific overrides for next round
     budget = order.get("budget", float('inf'))
+    if not budget or budget == 0:
+        budget = float('inf')
+        
     vendor_overrides = {}
     
-    for vendor_data in vendor_scores:
-        vendor_id = vendor_data["vendor_id"]
-        price = vendor_data["price"]
-        rank = vendor_data.get("rank", 999)
+    for v_data in scored_vendors:
+        try:
+            vendor_id = v_data["vendor_id"]
+            price = float(v_data["price"]) if v_data["price"] else 0.0
+            # We need to find the rank from the iteration.
+            current_rank = scored_vendors.index(v_data) + 1
+        except Exception as e:
+            print(f"DEBUG: CRASH in overrides loop. v_data type: {type(v_data)}", flush=True)
+            print(f"DEBUG: v_data content: {v_data}", flush=True)
+            raise e
         
         # Determine pressure level and suggested move
-        if rank == 1:
+        if current_rank == 1:
             # Best vendor: maintain position
             override = VendorOverride(
                 suggested_next_move="You have the best offer. Can you provide any additional value or services?",
@@ -255,9 +277,9 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
     
     # Create summary
     if best_price <= budget:
-        summary = f"✓ Found {len(valid_offers)} competitive offers. Best price ${best_price:.2f} is within budget (${budget:.2f})."
+        summary = f"MARKET STATUS: SUCCESS. Best offer is ${best_price:.2f} (Budget: ${budget:.2f}). You can accept this or try to get slightly lower."
     else:
-        summary = f"⚠ Best price ${best_price:.2f} exceeds budget (${budget:.2f}). Continue negotiating."
+        summary = f"MARKET STATUS: EXCEEDS BUDGET. Best offer is ${best_price:.2f} (Budget: ${budget:.2f}). YOU MUST NEGOTIATE LOWER."
     
     return MarketAnalysis(
         round_index=rounds_completed,
@@ -298,15 +320,19 @@ def create_final_comparison_report(leaderboard: Dict[str, Dict[str, Any]], order
     best_price = min(prices)
     
     vendor_comparisons = []
-    for vendor_id, offer in valid_offers.items():
+    for vendor_id_raw, offer in valid_offers.items():
         score = calculate_vendor_score(offer, best_price, order)
         price = offer.get("price_total")
-        delta = price - best_price if price else None
+        
+        if price is not None:
+            delta = float(price) - best_price
+        else:
+            delta = None
         
         vendor_comparisons.append({
-            "vendor_id": vendor_id,
+            "vendor_id": str(vendor_id_raw),
             "vendor_name": offer.get("vendor_name", "Unknown"),
-            "final_offer": offer,
+            "final_offer": dict(offer),
             "score": score,
             "delta": delta,
             "status": offer.get("status", "completed")
@@ -318,6 +344,17 @@ def create_final_comparison_report(leaderboard: Dict[str, Dict[str, Any]], order
     # Assign ranks
     comparisons_list = []
     for rank, vc in enumerate(vendor_comparisons, 1):
+        # Extract summary if available, else fall back to default string
+        offer_data = vc["final_offer"]
+        summary = offer_data.get("final_offer_summary")
+        if not summary:
+            # Fallback construction
+            price = offer_data.get("price_total")
+            currency = offer_data.get("currency", "USD")
+            items = offer_data.get("bundled_items", [])
+            item_str = f" ({', '.join(items)})" if items else ""
+            summary = f"Offer of {currency} {price}{item_str}"
+            
         comparisons_list.append(VendorComparison(
             vendor_id=vc["vendor_id"],
             vendor_name=vc["vendor_name"],
@@ -329,20 +366,31 @@ def create_final_comparison_report(leaderboard: Dict[str, Dict[str, Any]], order
         ))
     
     # Recommend best vendor
-    best_vendor = vendor_comparisons[0]
-    recommended_id = best_vendor["vendor_id"]
-    recommended_name = best_vendor["vendor_name"]
-    recommended_price = best_vendor["final_offer"].get("price_total")
-    
-    budget = order.get("budget", float('inf'))
-    if recommended_price <= budget:
-        reason = f"Best overall value at ${recommended_price:.2f} (within budget of ${budget:.2f})"
+    if comparisons_list:
+        best_vendor = comparisons_list[0]
+        recommended_id = best_vendor.vendor_id
+        recommended_name = best_vendor.vendor_name
+        
+        # Use exact final price usually carried in the offer dict
+        final_price = best_vendor.final_offer.get("final_price") or best_vendor.final_offer.get("price_total")
+        offer_summary = best_vendor.final_offer.get("final_offer_summary", f"${final_price}")
+        
+        budget = order.get("budget", float('inf'))
+        if final_price and final_price <= budget:
+            reason = f"Best Value Option: {offer_summary} (Within Budget)"
+        else:
+            reason = f"Best Available Option: {offer_summary}"
+            
+        if best_vendor.status == "finalized":
+            reason += " - DEAL AGREED"
     else:
-        reason = f"Best available option at ${recommended_price:.2f}, though it exceeds budget (${budget:.2f})"
-    
+        recommended_id = "none"
+        recommended_name = "None"
+        reason = "No valid offers available."
+
     market_summary = f"Evaluated {len(valid_offers)} vendors. Price range: ${best_price:.2f} - ${max(prices):.2f}"
     
-    logger.info(f"[AGGREGATOR] Final recommendation: {recommended_name} at ${recommended_price:.2f}")
+    logger.info(f"[AGGREGATOR] Final recommendation: {recommended_name} - {reason}")
     
     return FinalComparisonReport(
         recommended_vendor_id=recommended_id,

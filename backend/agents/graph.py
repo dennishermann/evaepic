@@ -102,7 +102,8 @@ def continue_to_negotiation(state: GraphState) -> List[Send]:
             "round_index": rounds_completed,
             "market_analysis": market_analysis,
             "conversation_id": conversation_ids.get(vendor["id"]),
-            "last_offer": leaderboard.get(vendor["id"])
+            "last_offer": leaderboard.get(vendor["id"]),
+            "product_id": vendor.get("relevant_product_id")
         })
         for vendor in relevant_vendors
     ]
@@ -216,15 +217,8 @@ def create_negotiation_graph() -> StateGraph:
     # Reduce: All negotiators → Aggregator
     workflow.add_edge("negotiate", "aggregator")
     
-    # Decision gate: Continue or End
-    workflow.add_conditional_edges(
-        "aggregator",
-        should_continue_negotiation,
-        {
-            "continue_negotiating": "start_strategy_phase",  # Loop back to strategy start
-            "end": END
-        }
-    )
+    # End
+    workflow.add_edge("aggregator", END)
     
     logger.info("Graph built successfully")
     
