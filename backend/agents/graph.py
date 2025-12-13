@@ -55,6 +55,9 @@ def continue_to_negotiation(state: GraphState) -> List[Send]:
     relevant_vendors = state.get("relevant_vendors", [])
     vendor_strategies = state.get("vendor_strategies", {})
     rounds_completed = state.get("rounds_completed", 0)
+    market_analysis = state.get("market_analysis")
+    conversation_ids = state.get("conversation_ids", {})
+    leaderboard = state.get("leaderboard", {})
     
     logger.info(f"[ROUTER] Fanning out to negotiate with {len(relevant_vendors)} vendors in parallel")
     
@@ -63,8 +66,11 @@ def continue_to_negotiation(state: GraphState) -> List[Send]:
         Send("negotiate", {
             "vendor_id": vendor["id"],
             "vendor_name": vendor.get("name", "Unknown Vendor"),
-            "strategy": vendor_strategies.get(vendor["id"], ""),
-            "round_index": rounds_completed
+            "strategy": vendor_strategies.get(vendor["id"], {}),
+            "round_index": rounds_completed,
+            "market_analysis": market_analysis,
+            "conversation_id": conversation_ids.get(vendor["id"]),
+            "last_offer": leaderboard.get(vendor["id"])
         })
         for vendor in relevant_vendors
     ]
@@ -213,8 +219,11 @@ def run_negotiation(user_input: str, webhook_url: str = None, max_rounds: int = 
         "vendor_strategies": {},
         "negotiation_history": {},
         "leaderboard": {},
+        "conversation_ids": {},
         "rounds_completed": 0,
         "max_rounds": max_rounds,
+        "market_analysis": None,
+        "final_comparison_report": None,
         "phase": "starting",
         "error": None
     }

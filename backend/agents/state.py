@@ -42,8 +42,12 @@ class GraphState(TypedDict):
     negotiation_history: Annotated[Dict[str, List[dict]], merge_dicts]  # vendor_id -> list of messages
     # Annotated because parallel negotiators update this concurrently
     leaderboard: Annotated[Dict[str, dict], merge_dicts]  # vendor_id -> latest Quote object
+    # Annotated because parallel negotiators update this concurrently
+    conversation_ids: Annotated[Dict[str, str], merge_dicts]  # vendor_id -> conversation_id
     rounds_completed: int
     max_rounds: int
+    market_analysis: Optional[dict]  # Market analysis from aggregator
+    final_comparison_report: Optional[dict]  # Final comparison report
     
     # ========== Meta ==========
     phase: str  # Current phase: "extraction", "filtering", "negotiation", "complete"
