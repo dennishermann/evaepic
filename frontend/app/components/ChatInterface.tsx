@@ -20,7 +20,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your procurement assistant. How can I help you today",
+      text: "Hi! I'm EvaEpic, your procurement assistant. I'm here to help you use this tool effectively. You can ask me questions about how to create orders, track negotiations, manage vendors, or anything else about using EvaEpic. How can I help you get started?",
       sender: "assistant",
       timestamp: new Date(),
     },
@@ -77,11 +77,11 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
 
-    // Simulate assistant response
+    // Simulate assistant response - helping users understand how to use EvaEpic
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I understand you're asking about: " + inputValue + ". Let me help you with that.",
+        text: "I can help you understand how to use EvaEpic! To get started, type your procurement request in the main input field and click 'Let's Start!' to begin processing your order. The system will extract your requirements, find vendors, negotiate prices, and provide you with the best options. What would you like to know more about?",
         sender: "assistant",
         timestamp: new Date(),
       };
@@ -197,7 +197,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
           </button>
         </div>
         <p className="text-xs text-[#8B7355] mt-2 px-1">
-          Assistant can make mistakes. Check important info.
+          I'm here to help you navigate EvaEpic. Ask me anything about using the tool!
         </p>
       </div>
     </div>

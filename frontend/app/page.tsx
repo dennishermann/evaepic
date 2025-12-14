@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import PlatformLayout from "./components/PlatformLayout";
 import FloatingActionButton from "./components/FloatingActionButton";
 import ChatInterface from "./components/ChatInterface";
@@ -14,6 +15,7 @@ import { OrderItem, OrderProgressStep } from "./types/order";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useNegotiation } from "./hooks/useNegotiation";
 import { OrderObject } from "./types/extraction";
+import { MOCK_PROGRESS_DATA } from "./data/mockProgress";
 
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -38,6 +40,7 @@ export default function Home() {
   const [filteredVendors, setFilteredVendors] = useState(mockVendors);
   const [isVendorFilterOpen, setIsVendorFilterOpen] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isMocking, setIsMocking] = useState(false);
   /* 
      REPLACED LOCAL STATE WITH HOOK 
   */
@@ -448,7 +451,7 @@ export default function Home() {
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Start New Order
+                New Order
               </button>
             )}
           </div>
@@ -456,7 +459,20 @@ export default function Home() {
 
         {/* Main Input Container - Centered */}
         {orderProgress.length === 0 && (
-          <div className="w-full flex items-center justify-center">
+          <div className="w-full flex flex-col items-center justify-center gap-6">
+            {/* Logo and Greeting */}
+            <div className="flex flex-row items-center gap-4">
+              <img
+                src="/WhatsApp Image 2025-12-13 at 23.30.36.jpeg"
+                alt="EvaEpic Logo"
+                width={120}
+                height={120}
+                className="rounded-3xl shadow-2xl border-4 border-white/40 backdrop-blur-sm"
+              />
+              <h1 className="text-3xl font-semibold text-[#5C4A3A]">
+                Hi, I'm EvaEpic!
+              </h1>
+            </div>
             <MainInputContainer
               inputValue={inputValue}
               onInputChange={setInputValue}

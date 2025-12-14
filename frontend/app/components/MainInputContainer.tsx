@@ -39,18 +39,18 @@ export default function MainInputContainer({
         {/* Text Input Area */}
         <div className="mb-4 relative">
           <label htmlFor="ask-input" className="sr-only">
-            Ask anything
+            What can I procure for you?
           </label>
           <textarea
             id="ask-input"
             ref={inputRef}
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
-            placeholder="Ask anything..."
+            placeholder="What can I procure for you?"
             rows={4}
             className="w-full px-0 py-2 text-xl bg-transparent text-[#5C4A3A] placeholder-[#8B7355]/70 focus:outline-none resize-none"
             style={{ minHeight: "120px" }}
-            aria-label="Ask anything"
+            aria-label="What can I procure for you?"
           />
           {/* Attached Files Display */}
           {attachedFiles.length > 0 && (
@@ -107,8 +107,8 @@ export default function MainInputContainer({
           <div className="flex items-center gap-2">
             <button
               onClick={onSendClick}
-              className="h-14 w-14 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] hover:from-[#6B5B4F] hover:to-[#5C4A3A] text-white font-semibold text-base transition-all flex items-center justify-center shadow-xl hover:shadow-2xl backdrop-blur-md"
-              aria-label={isProcessing ? "Processing..." : "Go!"}
+              className="h-12 px-8 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] hover:from-[#6B5B4F] hover:to-[#5C4A3A] text-white font-semibold text-base transition-all flex items-center justify-center shadow-xl hover:shadow-2xl backdrop-blur-md"
+              aria-label={isProcessing ? "Processing..." : "Let's Start!"}
               disabled={isProcessing}
             >
               {isProcessing ? (
@@ -117,7 +117,7 @@ export default function MainInputContainer({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                <span>Go!</span>
+                <span>Let's Start!</span>
               )}
             </button>
           </div>
