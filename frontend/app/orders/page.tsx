@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SearchAndFilter from "../components/SearchAndFilter";
+import { MOCK_ORDERS } from "../data/mockData";
 
 export default function OrdersPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -56,6 +57,15 @@ export default function OrdersPage() {
     });
   };
 
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; className: string }> = {
+      completed: { label: "Completed", className: "bg-green-50 text-green-700" },
+      in_negotiation: { label: "In Negotiation", className: "bg-blue-50 text-blue-700" },
+      pending_approval: { label: "Pending Approval", className: "bg-amber-50 text-amber-700" },
+    };
+    return statusMap[status] || { label: status, className: "bg-gray-50 text-gray-700" };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-end">
@@ -88,7 +98,7 @@ export default function OrdersPage() {
                   Order ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8B7355]">
-                  Description
+                  Item
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8B7355]">
                   Vendor
@@ -105,32 +115,35 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DEB887]/20">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <tr key={item} className="hover:bg-white/40 backdrop-blur-sm transition-all">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-[#5C4A3A]">
-                    #{1000 + item}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-[#8B7355]">
-                    Office Supplies
-                  </td>
-                  <td className="px-6 py-4 text-sm text-[#8B7355]">
-                    Vendor {item}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className="rounded-full bg-[#FAF0E6] px-3 py-1 text-xs font-medium text-[#6B5B4F] shadow-sm">
-                      Active
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-[#8B7355]">
-                    {new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button className="text-[#8B7355] hover:text-[#6B5B4F] transition-colors">
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {MOCK_ORDERS.map((order) => {
+                const statusInfo = getStatusBadge(order.status);
+                return (
+                  <tr key={order.id} className="hover:bg-white/40 backdrop-blur-sm transition-all">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-[#5C4A3A]">
+                      {order.id}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#8B7355]">
+                      {order.item}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#8B7355]">
+                      {order.vendor}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium shadow-sm ${statusInfo.className}`}>
+                        {statusInfo.label}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-[#8B7355]">
+                      {order.created_date}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button className="text-[#8B7355] hover:text-[#6B5B4F] transition-colors">
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

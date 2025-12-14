@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SearchAndFilter from "../components/SearchAndFilter";
+import { MOCK_NEGOTIATIONS } from "../data/mockData";
 
 export default function NegotiationsPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -20,9 +21,9 @@ export default function NegotiationsPage() {
       type: "select" as const,
       options: [
         { label: "All Status", value: "all" },
-        { label: "In Progress", value: "in-progress" },
-        { label: "Paused", value: "paused" },
+        { label: "In Progress", value: "in_progress" },
         { label: "Completed", value: "completed" },
+        { label: "Paused", value: "paused" },
         { label: "Cancelled", value: "cancelled" },
       ],
     },
@@ -92,23 +93,23 @@ export default function NegotiationsPage() {
 
       {/* Negotiations List */}
       <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((item) => (
+        {MOCK_NEGOTIATIONS.map((negotiation) => (
           <div
-            key={item}
+            key={negotiation.id}
             className="rounded-lg bg-gradient-to-br from-white/80 via-[#FAF8F3]/70 to-white/80 backdrop-blur-xl p-6 shadow-xl border border-[#DEB887]/30"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <h3 className="text-lg font-semibold text-[#5C4A3A] drop-shadow-sm">
-                    Negotiation #{3000 + item}
+                    {negotiation.id}
                   </h3>
                   <span className="rounded-full bg-[#FAF0E6] px-3 py-1 text-xs font-medium text-[#8B7355] shadow-sm">
-                    In Progress
+                    {negotiation.status === "in_progress" ? "In Progress" : "Completed"}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-[#8B7355]">
-                  Vendor: Vendor {item} | Order: #{1000 + item}
+                  {negotiation.item} | Vendor: {negotiation.vendor} | Order: {negotiation.order_id}
                 </p>
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div>
@@ -116,7 +117,7 @@ export default function NegotiationsPage() {
                       Initial Price
                     </p>
                     <p className="mt-1 text-lg font-semibold text-[#5C4A3A]">
-                      ${(item * 1000).toLocaleString()}
+                      ${negotiation.initial_price.toLocaleString()}
                     </p>
                   </div>
                   <div>
@@ -124,7 +125,7 @@ export default function NegotiationsPage() {
                       Current Offer
                     </p>
                     <p className="mt-1 text-lg font-semibold text-[#6B5B4F]">
-                      ${(item * 850).toLocaleString()}
+                      ${(negotiation.current_offer || negotiation.final_price || negotiation.initial_price).toLocaleString()}
                     </p>
                   </div>
                   <div>
@@ -132,19 +133,19 @@ export default function NegotiationsPage() {
                       Savings
                     </p>
                     <p className="mt-1 text-lg font-semibold text-[#8B7355]">
-                      ${(item * 150).toLocaleString()}
+                      ${negotiation.savings.toLocaleString()}
                     </p>
                   </div>
                 </div>
                 <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between text-xs text-[#8B7355]">
                     <span>Progress</span>
-                    <span>{60 + item * 5}%</span>
+                    <span>{negotiation.progress}%</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-white/40 backdrop-blur-sm">
                     <div
                       className="h-2 rounded-full bg-gradient-to-r from-[#8B7355] to-[#6B5B4F]"
-                      style={{ width: `${60 + item * 5}%` }}
+                      style={{ width: `${negotiation.progress}%` }}
                     ></div>
                   </div>
                 </div>
@@ -153,9 +154,11 @@ export default function NegotiationsPage() {
                 <button className="rounded-2xl bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] px-4 py-2 text-sm font-medium text-white hover:from-[#6B5B4F] hover:to-[#5C4A3A] transition-all shadow-xl hover:shadow-2xl backdrop-blur-md">
                   View Details
                 </button>
-                <button className="rounded-2xl border border-white/40 px-4 py-2 text-sm font-medium text-[#5C4A3A] hover:bg-white/60 backdrop-blur-md transition-all shadow-md">
-                  Pause
-                </button>
+                {negotiation.status === "in_progress" && (
+                  <button className="rounded-2xl border border-white/40 px-4 py-2 text-sm font-medium text-[#5C4A3A] hover:bg-white/60 backdrop-blur-md transition-all shadow-md">
+                    Pause
+                  </button>
+                )}
               </div>
             </div>
           </div>

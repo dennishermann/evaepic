@@ -1,114 +1,53 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import Card from "../components/Card";
 import StatusChart from "../components/StatusChart";
 import TrendChart from "../components/TrendChart";
 import FloatingActionButton from "../components/FloatingActionButton";
-import { useButton } from "@react-aria/button";
+import { MOCK_DASHBOARD_STATS, MOCK_ORDERS, MOCK_QUOTES, MOCK_VENDORS } from "../data/mockData";
 
-// Mock data - in a real app, this would come from API/store
-const mockStats = {
-  totalOrders: 45,
-  activeOrders: 12,
-  pendingQuotes: 8,
-  activeVendors: 24,
-  activeNegotiations: 5,
-  completedOrders: 28,
-  totalSavings: 125000,
-};
-
+// Derived statistics from mock data
 const mockOrderStatus = {
-  active: 12,
-  pending: 8,
-  completed: 28,
-  cancelled: 2,
+  active: MOCK_ORDERS.filter(o => o.status === "in_negotiation").length,
+  pending: MOCK_ORDERS.filter(o => o.status === "pending_approval").length,
+  completed: MOCK_ORDERS.filter(o => o.status === "completed").length,
+  cancelled: 0,
 };
 
 const mockQuoteStatus = {
-  pending: 8,
-  accepted: 15,
-  rejected: 5,
-  expired: 3,
+  pending: MOCK_QUOTES.filter(q => q.status === "pending").length,
+  accepted: MOCK_QUOTES.filter(q => q.status === "accepted").length,
+  rejected: 0,
+  expired: 0,
 };
 
-const mockRecentOrders = [
-  {
-    id: "ORD-1001",
-    title: "Office Supplies",
-    vendor: "ABC Corp",
-    status: "active",
-    amount: 5000,
-    date: "2024-01-15",
-  },
-  {
-    id: "ORD-1002",
-    title: "IT Equipment",
-    vendor: "Tech Solutions",
-    status: "pending",
-    amount: 15000,
-    date: "2024-01-14",
-  },
-  {
-    id: "ORD-1003",
-    title: "Office Furniture",
-    vendor: "Furniture Plus",
-    status: "active",
-    amount: 8000,
-    date: "2024-01-13",
-  },
-  {
-    id: "ORD-1004",
-    title: "Software Licenses",
-    vendor: "Software Inc",
-    status: "completed",
-    amount: 12000,
-    date: "2024-01-12",
-  },
-  {
-    id: "ORD-1005",
-    title: "Marketing Materials",
-    vendor: "Print Shop",
-    status: "active",
-    amount: 3500,
-    date: "2024-01-11",
-  },
-];
+// Recent orders from mock data (last 5)
+const mockRecentOrders = MOCK_ORDERS.slice(0, 5).map(order => ({
+  id: order.id,
+  title: order.item,
+  vendor: order.vendor,
+  status: order.status === "in_negotiation" ? "active" :
+    order.status === "pending_approval" ? "pending" : "completed",
+  amount: order.final_price || order.current_offer || order.budget,
+  date: order.created_date,
+}));
 
-const mockRecentQuotes = [
-  {
-    id: "QUO-2001",
-    title: "Office Supplies",
-    vendor: "ABC Corp",
-    status: "pending",
-    amount: 5000,
-    date: "2024-01-15",
-  },
-  {
-    id: "QUO-2002",
-    title: "IT Equipment",
-    vendor: "Tech Solutions",
-    status: "accepted",
-    amount: 15000,
-    date: "2024-01-14",
-  },
-  {
-    id: "QUO-2003",
-    title: "Office Furniture",
-    vendor: "Furniture Plus",
-    status: "pending",
-    amount: 8000,
-    date: "2024-01-13",
-  },
-];
+// Recent quotes from mock data
+const mockRecentQuotes = MOCK_QUOTES.slice(0, 3).map(quote => ({
+  id: quote.id,
+  title: quote.item,
+  vendor: quote.vendor,
+  status: quote.status,
+  amount: quote.price,
+  date: quote.created_date,
+}));
 
-const mockVendorPerformance = [
-  { label: "ABC Corp", value: 45 },
-  { label: "Tech Solutions", value: 32 },
-  { label: "Furniture Plus", value: 28 },
-  { label: "Software Inc", value: 22 },
-  { label: "Print Shop", value: 15 },
-];
+// Vendor performance (orders by vendor)
+const mockVendorPerformance = MOCK_VENDORS.slice(0, 5).map(vendor => ({
+  label: vendor.name,
+  value: MOCK_ORDERS.filter(o => o.vendor_id === vendor.id).length * 8 + Math.floor(Math.random() * 10)
+}));
 
 const mockMonthlyTrend = [
   { label: "Aug", value: 8 },
@@ -151,17 +90,17 @@ export default function DashboardPage() {
         <Card>
           <div className="text-center">
             <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              {mockStats.activeOrders}
-      </div>
+              {MOCK_DASHBOARD_STATS.activeOrders}
+            </div>
             <div className="text-sm font-medium text-[#8B7355] mt-1">
-                Active Orders
+              Active Orders
             </div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
             <div className="text-2xl font-semibold text-[#DEB887] drop-shadow-sm">
-              {mockStats.pendingQuotes}
+              {MOCK_DASHBOARD_STATS.pendingQuotes}
             </div>
             <div className="text-sm font-medium text-[#8B7355] mt-1">
               Pending Quotes
@@ -171,7 +110,7 @@ export default function DashboardPage() {
         <Card>
           <div className="text-center">
             <div className="text-2xl font-semibold text-[#8B7355] drop-shadow-sm">
-              {mockStats.activeVendors}
+              {MOCK_DASHBOARD_STATS.activeVendors}
             </div>
             <div className="text-sm font-medium text-[#8B7355] mt-1">
               Active Vendors
@@ -181,7 +120,7 @@ export default function DashboardPage() {
         <Card>
           <div className="text-center">
             <div className="text-2xl font-semibold text-[#6B5B4F] drop-shadow-sm">
-              {formatCurrency(mockStats.totalSavings)}
+              {formatCurrency(MOCK_DASHBOARD_STATS.totalSavings)}
             </div>
             <div className="text-sm font-medium text-[#8B7355] mt-1">
               Total Savings
@@ -191,22 +130,22 @@ export default function DashboardPage() {
             </div>
           </div>
         </Card>
-        </div>
+      </div>
 
       {/* Analytics Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <div className="text-center">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Avg. Negotiation Time
             </p>
             <p className="mt-2 text-3xl font-bold text-[#8B7355] drop-shadow-sm">
               2.4 days
-              </p>
+            </p>
             <p className="mt-1 text-xs text-[#8B7355]">
               -15% improvement
-              </p>
-            </div>
+            </p>
+          </div>
         </Card>
         <Card>
           <div className="text-center">
@@ -219,26 +158,26 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs text-[#8B7355]">
               +5% from last month
             </p>
-            </div>
+          </div>
         </Card>
         <Card>
           <div className="text-center">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Completed Orders
-              </p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-              {mockStats.completedOrders}
+            </p>
+            <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              {MOCK_DASHBOARD_STATS.completedOrders}
             </p>
             <p className="mt-1 text-xs text-[#8B7355]">
-              {mockStats.activeNegotiations} active negotiations
-              </p>
-            </div>
+              {MOCK_DASHBOARD_STATS.activeNegotiations} active negotiations
+            </p>
+          </div>
         </Card>
       </div>
 
       {/* Order Status Distribution */}
       <Card title="Order Status Distribution">
-        {mockStats.totalOrders > 0 ? (
+        {MOCK_DASHBOARD_STATS.totalOrders > 0 ? (
           <StatusChart
             data={mockOrderStatus}
             colors={{
@@ -257,7 +196,7 @@ export default function DashboardPage() {
 
       {/* Quote Status Distribution */}
       <Card title="Quote Status Distribution">
-        {mockStats.pendingQuotes > 0 ? (
+        {MOCK_DASHBOARD_STATS.pendingQuotes > 0 ? (
           <StatusChart
             data={mockQuoteStatus}
             colors={{
@@ -299,21 +238,21 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No vendor performance data available
-          </div>
+            </div>
           )}
         </Card>
-        </div>
+      </div>
 
       {/* Order Completion Status */}
-      {mockStats.completedOrders > 0 && (
+      {MOCK_DASHBOARD_STATS.completedOrders > 0 && (
         <Card title="Order Completion Status">
           <div className="space-y-2">
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Completed
               </span>
               <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                {mockStats.completedOrders}
+                {MOCK_DASHBOARD_STATS.completedOrders}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -321,7 +260,7 @@ export default function DashboardPage() {
                 Active
               </span>
               <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                {mockStats.activeOrders}
+                {MOCK_DASHBOARD_STATS.activeOrders}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -331,8 +270,8 @@ export default function DashboardPage() {
               <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
                 {mockOrderStatus.pending}
               </span>
+            </div>
           </div>
-        </div>
         </Card>
       )}
 
@@ -396,13 +335,13 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {mockStats.totalOrders === 0 && (
+      {MOCK_DASHBOARD_STATS.totalOrders === 0 && (
         <Card>
           <div className="text-center py-8">
             <p className="text-gray-500 dark:text-gray-400">
               No procurement data available. Create orders and quotes to see dashboard statistics.
             </p>
-        </div>
+          </div>
         </Card>
       )}
 
