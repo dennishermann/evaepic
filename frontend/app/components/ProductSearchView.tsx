@@ -3,6 +3,7 @@ interface Product {
   name: string;
   description: string;
   category: string;
+  unitPrice: number;
 }
 
 interface ProductSearchViewProps {

@@ -8,6 +8,11 @@ load_dotenv()
 
 app = FastAPI(title="EvaEpic API")
 
+from api.routers import negotiation, extract
+app.include_router(negotiation.router, prefix="/api/negotiate", tags=["negotiation"])
+app.include_router(extract.router, prefix="/api", tags=["extract"])
+
+
 # Configure CORS
 origins = [
     "http://localhost:3000",  # Next.js default port

@@ -148,24 +148,21 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
-              message.sender === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+              }`}
           >
             <div
-              className={`max-w-[80%] rounded-3xl px-4 py-2 shadow-md ${
-                message.sender === "user"
+              className={`max-w-[80%] rounded-3xl px-4 py-2 shadow-md ${message.sender === "user"
                   ? "bg-[#8B7355] text-white"
                   : "bg-white/60 backdrop-blur-xl text-[#5C4A3A] border border-white/40"
-              }`}
+                }`}
             >
               <p className="text-sm">{message.text}</p>
               <p
-                className={`text-xs mt-1 ${
-                  message.sender === "user"
-                  ? "text-[#FAF0E6]"
-                  : "text-[#8B7355]"
-                }`}
+                className={`text-xs mt-1 ${message.sender === "user"
+                    ? "text-[#FAF0E6]"
+                    : "text-[#8B7355]"
+                  }`}
               >
                 {message.timestamp.toLocaleTimeString([], {
                   hour: "2-digit",
@@ -188,7 +185,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             className="w-full pl-4 pr-20 py-3 bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl text-[#5C4A3A] placeholder-[#8B7355] focus:outline-none focus:ring-2 focus:ring-[#8B7355] focus:border-transparent text-sm"
             placeholder="Send a message or @Assistant"
           />
-          
+
           {/* Send Button */}
           <button
             {...sendButtonProps}

@@ -168,7 +168,7 @@ def create_negotiation_graph() -> StateGraph:
     
     # ========== Add Nodes ==========
     # ========== Add Nodes ==========
-    workflow.add_node("extract_order", extract_order_node)
+    # workflow.add_node("extract_order", extract_order_node)
     workflow.add_node("fetch_vendors", fetch_vendors_node)
     workflow.add_node("evaluate_vendor", evaluate_vendor_node)
     
@@ -183,10 +183,10 @@ def create_negotiation_graph() -> StateGraph:
     # ========== Define Edges ==========
     
     # Entry point
-    workflow.add_edge(START, "extract_order")
+    workflow.add_edge(START, "fetch_vendors")
     
-    # Phase 1: Extraction → Fetching
-    workflow.add_edge("extract_order", "fetch_vendors")
+    # Phase 1: Extraction → Fetching (REMOVED: Extraction is now handled by API)
+    # workflow.add_edge("extract_order", "fetch_vendors")
     
     # Phase 2: Vendor filtering (Map)
     # Map: Fan out to parallel evaluators

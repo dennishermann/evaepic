@@ -8,9 +8,12 @@ import OrderProgressUI from "./components/OrderProgressUI";
 import OrderInputBubble from "./components/OrderInputBubble";
 import MainInputContainer from "./components/MainInputContainer";
 import OrderFormModal from "./components/OrderFormModal";
+import OrderResultCard from "./components/OrderResultCard";
 import { productCatalog, mockVendors } from "./constants/mockData";
 import { OrderItem, OrderProgressStep } from "./types/order";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import { useNegotiation } from "./hooks/useNegotiation";
+import { OrderObject } from "./types/extraction";
 
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -22,6 +25,7 @@ export default function Home() {
     category: "all",
     priceRange: "all",
   });
+  const [isExtracting, setIsExtracting] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [searchResults, setSearchResults] = useState(productCatalog);
   const [selectedProduct, setSelectedProduct] = useState<typeof productCatalog[0] | null>(null);
@@ -34,8 +38,17 @@ export default function Home() {
   const [filteredVendors, setFilteredVendors] = useState(mockVendors);
   const [isVendorFilterOpen, setIsVendorFilterOpen] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
-  const [orderProgress, setOrderProgress] = useState<OrderProgressStep[]>([]);
+  /* 
+     REPLACED LOCAL STATE WITH HOOK 
+  */
+  const {
+    isNegotiating: isProcessingOrder,
+    progress: orderProgress,
+    startNegotiation,
+    resetNegotiation,
+    finalResult
+  } = useNegotiation();
+
   const [orderInputText, setOrderInputText] = useState("");
 
   const { isRecording, startRecording, stopRecording } = useAudioRecording((text) => {
@@ -45,7 +58,7 @@ export default function Home() {
   // Search functionality
   useEffect(() => {
     let filtered = productCatalog;
-    
+
     // Apply search query
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter(
@@ -55,12 +68,12 @@ export default function Home() {
           product.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+
     // Apply category filter
     if (filters.category !== "all") {
       filtered = filtered.filter((product) => product.category === filters.category);
     }
-    
+
     // Apply price range filter
     if (filters.priceRange !== "all") {
       filtered = filtered.filter((product) => {
@@ -79,14 +92,14 @@ export default function Home() {
         }
       });
     }
-    
+
     setSearchResults(filtered);
   }, [searchQuery, filters]);
 
   // Filter vendors
   useEffect(() => {
     let filtered = mockVendors;
-    
+
     if (vendorSearchQuery.trim() !== "") {
       filtered = filtered.filter(
         (vendor) =>
@@ -94,18 +107,18 @@ export default function Home() {
           vendor.category.toLowerCase().includes(vendorSearchQuery.toLowerCase())
       );
     }
-    
+
     if (vendorFilters.category !== "all") {
       filtered = filtered.filter((vendor) => vendor.category === vendorFilters.category);
     }
-    
+
     if (vendorFilters.rating !== "all") {
       filtered = filtered.filter((vendor) => {
         const minRating = parseFloat(vendorFilters.rating);
         return vendor.rating >= minRating;
       });
     }
-    
+
     setFilteredVendors(filtered);
   }, [vendorSearchQuery, vendorFilters]);
 
@@ -113,17 +126,17 @@ export default function Home() {
   const parseTextToItems = (text: string): OrderItem[] => {
     const items: OrderItem[] = [];
     const lines = text.split("\n").filter((line) => line.trim());
-    
+
     lines.forEach((line) => {
       // Try to match patterns like "10 Office Chairs" or "Office Chairs x10" or "Office Chairs 10"
       const quantityMatch = line.match(/(\d+)/);
       const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
-      
+
       // Find matching product
       const productMatch = productCatalog.find((product) =>
         line.toLowerCase().includes(product.name.toLowerCase())
       );
-      
+
       if (productMatch) {
         // For parsed items, use a default vendor or create a unique key
         const defaultVendorId = 1; // Default vendor for parsed items
@@ -140,7 +153,7 @@ export default function Home() {
         });
       }
     });
-    
+
     return items;
   };
 
@@ -192,10 +205,10 @@ export default function Home() {
         orderItems.map((item) =>
           item.itemKey === itemKey
             ? {
-                ...item,
-                quantity: item.quantity + quantity,
-                total: (item.quantity + quantity) * item.unitPrice,
-              }
+              ...item,
+              quantity: item.quantity + quantity,
+              total: (item.quantity + quantity) * item.unitPrice,
+            }
             : item
         )
       );
@@ -250,27 +263,56 @@ export default function Home() {
     setSearchQuery("");
   };
 
-  const handleSendButtonClick = () => {
+  const handleSendButtonClick = async () => {
     if (inputValue.trim().length > 0) {
-      const parsedItems = parseTextToItems(inputValue);
-      if (parsedItems.length > 0) {
-        setOrderItems(parsedItems);
-      } else {
-        // If no items parsed, create a single item from the text input
-        const textItem: OrderItem = {
-          id: Date.now(),
-          itemKey: `text-${Date.now()}`,
-          name: inputValue.trim(),
-          quantity: 1,
-          unitPrice: 0,
-          total: 0,
-          description: "Order from text input",
-        };
-        setOrderItems([textItem]);
+
+      // Use the new AI Extraction Agent
+      setIsExtracting(true);
+      try {
+        const response = await fetch('/api/extract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: inputValue }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to extract order');
+        }
+
+        const orderData = await response.json();
+        setIsExtracting(false);
+
+        // Use the callback to process the data and open the form
+        handleOrderExtracted(orderData);
+        setInputValue(""); // Clear input on success
+
+      } catch (error) {
+        console.error("Extraction failed, falling back to basic parser", error);
+        setIsExtracting(false);
+
+        // Fallback to legacy parser if API fails
+        const parsedItems = parseTextToItems(inputValue);
+        if (parsedItems.length > 0) {
+          setOrderItems(parsedItems);
+        } else {
+          // If no items parsed, create a single item from the text input
+          const textItem: OrderItem = {
+            id: Date.now(),
+            itemKey: `text-${Date.now()}`,
+            name: inputValue.trim(),
+            quantity: 1,
+            unitPrice: 0,
+            total: 0,
+            description: "Order from text input",
+          };
+          setOrderItems([textItem]);
+        }
+        // Directly show create order modal (product/vendor selection)
+        setShowOrderForm(true);
+        setSearchQuery("");
       }
-      // Directly show create order modal (product/vendor selection)
-      setShowOrderForm(true);
-      setSearchQuery("");
     }
   };
 
@@ -281,97 +323,81 @@ export default function Home() {
   }) => {
     // Use provided order data or fall back to current state
     const finalItems = orderData?.items || orderItems;
-    
+
     // Capture the order input text
-    const orderText = finalItems.length > 0 
-      ? `Create order with ${finalItems.length} item${finalItems.length > 1 ? "s" : ""}: ${finalItems.map(item => `${item.quantity}x ${item.name}`).join(", ")}`
-      : inputValue || "Create order";
-    
+    const orderText = finalItems.length > 0
+      ? `Processing order for: ${finalItems.map(item => item.name).join(", ")}`
+      : inputValue || "Processing order...";
+
     setOrderInputText(orderText);
-    setIsProcessingOrder(true);
+
+    // Start Real Negotiation via Hook
     setShowOrderForm(false);
 
-    // Format order items for step 1 output (matches backend order_object structure)
-    const orderItemsOutput = finalItems.map(item => {
-      const qty = item.quantity;
-      const budget = item.budget ? formatCurrency(item.budget) : formatCurrency(item.total);
-      const currency = item.currency || 'USD';
-      const reqs = item.requirements || 'None';
-      const urgency = item.urgency ? item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1) : 'Medium';
-      return `• ${qty}x ${item.name}\nBudget: ${budget} ${currency}\nRequirements: ${reqs}\nUrgency: ${urgency}`;
-    }).join('\n\n');
+    // Construct single OrderObject for the backend (currently supports single item)
+    // We utilize the first item's details + extra stored fields
+    const mainItem = finalItems[0];
+    const singleOrderObject = mainItem ? {
+      item: mainItem.name,
+      quantity: {
+        min: mainItem.quantity,
+        max: mainItem.quantity,
+        preferred: mainItem.quantity
+      },
+      budget: mainItem.budget || mainItem.total,
+      currency: mainItem.currency || 'USD',
+      requirements: {
+        mandatory: mainItem.requirements ? mainItem.requirements.split(',').map(s => s.trim()).filter(Boolean) : [],
+        optional: []
+      },
+      urgency: mainItem.urgency || 'medium'
+    } : null;
 
-    const steps: OrderProgressStep[] = [
-      { 
-        step: 1, 
-        status: "pending", 
-        title: "Extracting order details",
-        message: "Analyzing the order items you've selected and calculating total quantities. Verifying product availability and specifications for each item in your order.",
-        output: `Order Object Extracted:\n\n${orderItemsOutput}`
-      },
-      { 
-        step: 2, 
-        status: "pending", 
-        title: "Fetching vendors from database",
-        message: "Querying our vendor database to find suppliers who can fulfill your order requirements. Matching products with vendors based on availability, location, and capabilities.",
-        output: `Fetched ${Math.floor(Math.random() * 10) + 5} vendors from API\n(all_vendors populated)`
-      },
-      { 
-        step: 3, 
-        status: "pending", 
-        title: "Evaluating vendor suitability",
-        message: "Evaluating each vendor to determine if they can fulfill your order requirements based on product category, quantity capacity, and mandatory requirements.",
-        output: `Evaluated vendors in parallel\n(relevant_vendors: ${Math.floor(Math.random() * 5) + 3} vendors passed evaluation)`
-      },
-      { 
-        step: 4, 
-        status: "pending", 
-        title: "Generating negotiation strategies",
-        message: "Creating customized negotiation strategies for each relevant vendor to optimize pricing and terms.",
-        output: `Generated strategies for ${Math.floor(Math.random() * 3) + 3} vendors\n(vendor_strategies populated)`
-      },
-      { 
-        step: 5, 
-        status: "pending", 
-        title: "Negotiating with vendors",
-        message: "Sending negotiation requests to vendors and gathering quotes with pricing, delivery timelines, and contract terms.",
-        output: `Negotiated with vendors in parallel\n(leaderboard updated with quotes)`
-      },
-      { 
-        step: 6, 
-        status: "pending", 
-        title: "Analyzing market and finalizing",
-        message: "Aggregating all quotes, analyzing market benchmarks, ranking vendors, and preparing final comparison report.",
-        output: `Market Analysis Complete:\n• Best Price: ${formatCurrency(finalItems.reduce((sum, item) => sum + (item.budget || item.total), 0) * 0.9)}\n• Median Price: ${formatCurrency(finalItems.reduce((sum, item) => sum + (item.budget || item.total), 0))}\n• Vendor Rankings: Generated\n• Final Comparison Report: Ready`
-      },
-    ];
+    // Pass the text description as user input to the agent, and the structured object
+    startNegotiation(orderText, singleOrderObject);
 
-    setOrderProgress(steps);
+    // Note: The rest of the simulated steps code was removed as it is now handled by the WebSocket hook
+  };
 
-    // Simulate order processing steps
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      
-      setOrderProgress((prev) =>
-        prev.map((s, index) => {
-          if (index < i) {
-            return { ...s, status: "completed" };
-          } else if (index === i) {
-            return { ...s, status: "active" };
-          }
-          return s;
-        })
-      );
-    }
+  const handleOrderExtracted = (order: OrderObject) => {
+    // 1. Convert OrderObject to OrderItem(s)
+    // We'll create a single item for now, or match existing products
+    // For now, let's create a generic item if we can't find a perfect match
+    // or try to match by name
 
-    // Mark all as completed
-    setOrderProgress((prev) =>
-      prev.map((s) => ({ ...s, status: "completed" }))
+    // Simple matching logic
+    const matchedProduct = productCatalog.find(p =>
+      p.name.toLowerCase().includes(order.item.toLowerCase()) ||
+      order.item.toLowerCase().includes(p.name.toLowerCase())
     );
 
-    // Keep the progress UI visible - don't reset
-    // The user can manually reset by navigating away or refreshing
+    const defaultVendorId = 1;
+
+    const newItem: OrderItem = {
+      id: matchedProduct ? matchedProduct.id : Date.now(),
+      itemKey: matchedProduct ? `${matchedProduct.id}-${defaultVendorId}` : `custom-${Date.now()}`,
+      name: matchedProduct ? matchedProduct.name : order.item,
+      quantity: order.quantity.preferred,
+      unitPrice: matchedProduct ? matchedProduct.unitPrice : (order.budget / order.quantity.preferred), // Fallback price
+      total: matchedProduct ? (matchedProduct.unitPrice * order.quantity.preferred) : order.budget,
+      description: matchedProduct ? matchedProduct.description : `Custom order for ${order.item}`,
+
+      requirements: order.requirements.mandatory.join(", "),
+      urgency: (order.urgency.toLowerCase() as "low" | "medium" | "high" | "critical") || "medium"
+    };
+
+    setOrderItems([newItem]);
+
+    // 2. Open the Order Form
+    setShowOrderForm(true);
+
+    // 3. Perhaps pre-fill other fields or show a toast?
+    // For now, just opening the form with the item is enough.
   };
+
+  // Keep the progress UI visible - don't reset
+  // The user can manually reset by navigating away or refreshing
+
 
   const handleFileAttach = (files: File[]) => {
     setAttachedFiles((prev) => [...prev, ...files]);
@@ -405,12 +431,31 @@ export default function Home() {
         )}
 
         {/* Progress UI - integrated into main content */}
-        {isProcessingOrder && orderProgress.length > 0 && (
-          <OrderProgressUI progress={orderProgress} />
+        {orderProgress.length > 0 && (
+          <div className="w-full max-w-4xl flex flex-col items-center">
+            <OrderProgressUI progress={orderProgress} />
+
+            {/* Show Result Card when done */}
+            {!isProcessingOrder && finalResult && (
+              <OrderResultCard result={finalResult} />
+            )}
+
+            {!isProcessingOrder && (
+              <button
+                onClick={resetNegotiation}
+                className="mt-8 px-8 py-3 bg-[#8B7355] hover:bg-[#6B5B4F] text-white rounded-xl shadow-lg transition-all transform hover:scale-105 font-medium flex items-center gap-2"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Start New Order
+              </button>
+            )}
+          </div>
         )}
 
         {/* Main Input Container - Centered */}
-        {!isProcessingOrder && (
+        {orderProgress.length === 0 && (
           <div className="w-full flex items-center justify-center">
             <MainInputContainer
               inputValue={inputValue}
@@ -423,6 +468,7 @@ export default function Home() {
               onRemoveFile={handleRemoveFile}
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
+              isProcessing={isExtracting}
             />
           </div>
         )}
@@ -450,7 +496,10 @@ export default function Home() {
       />
 
       {/* Chat Interface */}
-      <ChatInterface isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      <ChatInterface
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
 
       {/* Order Form Modal - Product/Vendor Selection */}
       <OrderFormModal
