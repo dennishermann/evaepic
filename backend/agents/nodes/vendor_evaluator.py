@@ -9,6 +9,7 @@ import logging
 import base64
 import os
 import mimetypes
+import traceback
 from pathlib import Path
 from typing import Dict, Any, TypedDict, List, Optional
 from pydantic import BaseModel, Field, ValidationError
@@ -130,6 +131,7 @@ Please analyze the attached documents to find the product.
             return result
         except Exception as e:
             logger.error(f"[EVALUATOR] Error evaluating {vendor.name}: {e}")
+            logger.error(traceback.format_exc())
             raise
 
 
@@ -160,14 +162,25 @@ def evaluate_vendor_node(input_data: EvaluateInput) -> Dict[str, Any]:
             # Inject the found product ID into the vendor dict for downstream nodes
             vendor_dict_out = vendor_dict.copy()
             vendor_dict_out["relevant_product_id"] = result.product_id
-            return {"relevant_vendors": [vendor_dict_out]}
+            return {
+                "relevant_vendors": [vendor_dict_out],
+                "_evaluated_vendor_id": [str(vendor.id)]
+            }
         else:
             print(f"[EVALUATOR] ✗ {vendor.name} - NOT RELEVANT", flush=True)
             logger.info(f"[EVALUATOR] ✗ {vendor.name} - NOT RELEVANT")
-            return {"relevant_vendors": []}
+            return {
+                "relevant_vendors": [],
+                "_evaluated_vendor_id": [str(vendor.id)]
+            }
             
     except Exception as e:
         vendor_name = vendor_dict.get('name', 'Unknown')
         print(f"[EVALUATOR] CRITICAL ERROR with {vendor_name}: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
         logger.error(f"[EVALUATOR] Error evaluating {vendor_name}: {e}")
-        return {"relevant_vendors": []}
+        logger.error(traceback.format_exc())
+        return {
+            "relevant_vendors": [],
+            "_evaluated_vendor_id": [str(vendor_dict.get("id"))]
+        }

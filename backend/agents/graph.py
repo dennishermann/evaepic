@@ -103,7 +103,8 @@ def continue_to_negotiation(state: GraphState) -> List[Send]:
             "market_analysis": market_analysis,
             "conversation_id": conversation_ids.get(vendor["id"]),
             "last_offer": leaderboard.get(vendor["id"]),
-            "product_id": vendor.get("relevant_product_id")
+            "product_id": vendor.get("relevant_product_id"),
+            "order_details": state.get("order_object", {})  # Pass explicit order details
         })
         for vendor in relevant_vendors
     ]

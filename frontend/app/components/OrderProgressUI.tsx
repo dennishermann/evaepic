@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { OrderProgressStep } from "../types/order";
 
 interface OrderProgressUIProps {
@@ -141,62 +141,61 @@ function OutputCards({ output, stepNumber, contextVendorName }: { output: string
 
 export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  // Track manually expanded steps (completed ones that user wants to see)
+  const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Filter to only show completed and active steps
   const visibleSteps = progress.filter(
     (step) => step.status === "completed" || step.status === "active"
   );
 
-  // Get the current active step or the last completed step
+  // Get the current active step
   const activeStep = progress.find((step) => step.status === "active");
   const allCompleted = progress.length > 0 && progress.every((step) => step.status === "completed");
-  const lastStep = progress[progress.length - 1];
 
   // Determine the title based on current step
   const getTitle = () => {
-    if (allCompleted) {
-      return "Order Processing Complete";
-    }
-    if (activeStep) {
-      return activeStep.title;
-    }
-    if (lastStep && lastStep.status === "completed") {
-      return "Finalizing Order";
-    }
+    if (allCompleted) return "Order Processing Complete";
+    if (activeStep) return activeStep.title;
     return "Processing Order";
   };
 
-  // When processing is complete, start collapsed
+  // Toggle step expansion
+  const toggleStep = (stepNumber: number) => {
+    setExpandedSteps(prev =>
+      prev.includes(stepNumber)
+        ? prev.filter(s => s !== stepNumber)
+        : [...prev, stepNumber]
+    );
+  };
+
+  // Auto-scroll to bottom when progress updates
   useEffect(() => {
-    if (allCompleted && !isExpanded) {
-      setIsExpanded(false);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [allCompleted]);
+  }, [progress.length, activeStep?.step]);
 
   return (
     <div className="w-full max-w-6xl mb-6">
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes unfold {
-          from {
-            opacity: 0;
-            transform: translateY(-10px) scale(0.95);
-            max-height: 0;
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            max-height: 500px;
-          }
+          from { opacity: 0; transform: translateY(-10px); max-height: 0; }
+          to { opacity: 1; transform: translateY(0); max-height: 1000px; }
         }
-        .unfolding {
-          animation: unfold 1.2s ease-out forwards;
-          overflow: hidden;
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
         }
-        .unfolding-delay {
-          animation: unfold 1.2s ease-out 0.3s forwards;
-          opacity: 0;
-          overflow: hidden;
+        .unfolding { animation: unfold 0.6s ease-out forwards; overflow: hidden; }
+        .shimmer-text {
+          background: linear-gradient(90deg, #8B7355 0%, #D2B48C 50%, #8B7355 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer 2s linear infinite;
         }
       `}} />
       <div className="bg-gradient-to-br from-white/60 via-[#FAF0E6]/50 to-white/60 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/40 p-6">
@@ -204,311 +203,163 @@ export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
           <h2 className="text-2xl font-bold text-[#5C4A3A]">
             {getTitle()}
           </h2>
-          {allCompleted && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8B7355] hover:text-[#5C4A3A] hover:bg-white/60 backdrop-blur-md rounded-2xl transition-all shadow-md"
-            >
-              <span>{isExpanded ? "Hide" : "Show"} Details</span>
-              <svg
-                className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""
-                  }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-          )}
+          {/* Collapsing/Expansion controls could go here if needed globally */}
         </div>
-        {(isExpanded || !allCompleted) && (
-          <div className="space-y-6 relative pl-6">
-            {/* Continuous main vertical line through all steps */}
-            <div className="absolute left-3 w-0.5 bg-[#DEB887] top-0 bottom-0 z-0" style={{ marginLeft: '0' }} />
 
-            {visibleSteps.map((step, index) => {
-              // RELY ON DATA, NOT BOOLEAN: If vendorProgress exists and has items, it is parallel.
-              const isParallelStep = step.vendorProgress && step.vendorProgress.length > 0;
-              const prevStep = index > 0 ? visibleSteps[index - 1] : null;
-              const nextStep = index < visibleSteps.length - 1 ? visibleSteps[index + 1] : null;
+        <div className="space-y-6 relative pl-6">
+          {/* Continuous main vertical line */}
+          <div className="absolute left-3 w-0.5 bg-[#DEB887] top-0 bottom-0 z-0" style={{ marginLeft: '0' }} />
 
-              const prevIsParallel = prevStep?.vendorProgress && prevStep.vendorProgress.length > 0;
-              const nextIsParallel = nextStep?.vendorProgress && nextStep.vendorProgress.length > 0;
+          {visibleSteps.map((step, index) => {
+            const isParallelStep = step.vendorProgress && step.vendorProgress.length > 0;
+            const prevStep = index > 0 ? visibleSteps[index - 1] : null;
+            const prevIsParallel = prevStep?.vendorProgress && prevStep.vendorProgress.length > 0;
 
-              if (isParallelStep) {
-                const vendorCount = step.vendorProgress!.length;
-                const isFirstParallelStep = !prevIsParallel; // This is the first step that branches
+            // Logic for collapsing:
+            // Active step is ALWAYS expanded.
+            // Completed steps are collapsed by default, unless in expandedSteps.
+            // Exception: The very last visible step (if completed and no active step exists yet) typically stays expanded until next starts?
+            // User requested "collapse already done steps".
+            const isActive = step.status === "active";
+            const isExpandedState = isActive || expandedSteps.includes(step.step);
 
-                // Render parallel vendor lines side by side
-                return (
-                  <div key={step.step} className="space-y-4 relative pb-6">
-                    {/* Step header with main indicator - positioned on main line */}
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="relative flex-shrink-0 mt-1" style={{ marginLeft: '-24px' }}>
-                        {step.status === "completed" ? (
-                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center border-2 border-white">
-                            <svg
-                              className="h-4 w-4 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin bg-white" />
-                        )}
-                      </div>
-                      <h3
-                        className={`text-base font-semibold ${step.status === "active"
-                          ? "text-[#8B7355]"
-                          : "text-[#5C4A3A]"
-                          }`}
-                      >
+            if (isParallelStep) {
+              const vendorCount = step.vendorProgress!.length;
+
+              return (
+                <div key={step.step} className="relative pb-2">
+                  {/* Step Header (Clickable for toggle) */}
+                  <div
+                    className="flex items-center gap-4 relative z-10 cursor-pointer group"
+                    onClick={() => !isActive && toggleStep(step.step)}
+                  >
+                    <div className="relative flex-shrink-0 mt-1" style={{ marginLeft: '-24px' }}>
+                      {step.status === "completed" ? (
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center border-2 border-white group-hover:scale-110 transition-transform">
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="h-6 w-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin bg-white" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-base font-semibold ${isActive ? "text-[#8B7355]" : "text-[#5C4A3A]"}`}>
                         {step.title}
                       </h3>
+                      {!isActive && (
+                        <span className="text-xs text-[#8B7355]/60 group-hover:text-[#8B7355] transition-colors">
+                          {isExpandedState ? "(Hide)" : "(Show details)"}
+                        </span>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Parallel vendor lines - side by side */}
-                    <div className="ml-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative mt-12">
+                  {/* Parallel Content Body */}
+                  {isExpandedState && (
+                    <div className="ml-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative mt-8 unfolding">
                       {step.vendorProgress!.map((vendorProgress, vIndex) => {
                         const isFirst = vIndex === 0;
                         const isLast = vIndex === vendorCount - 1;
-
-                        // Use border-dotted for branch lines
-                        // Remove bg color, use border instead
-                        const animClass = step.status === 'active' || vendorProgress.status === 'active' ? 'animate-pulse' : '';
-                        const baseLineClass = `absolute border-[#DEB887] border-dotted ${animClass}`;
-
-                        // Vertical: border-l-2, width stays small (0.5 or 0 is fine, existing was 0.5)
+                        const baseLineClass = `absolute border-[#DEB887] border-dotted`;
                         const vertLineClass = `${baseLineClass} border-l-2`;
-                        // Horizontal: border-t-2
                         const horizLineClass = `${baseLineClass} border-t-2`;
 
-                        // Animation: Apply 'unfolding' to content elements, NOT the container, 
-                        // because the container has overflow:hidden which clips the negative-positioned lines.
-                        const unfoldClass = vendorProgress.status === "active" ? "unfolding" : "";
-
                         return (
-                          <div
-                            key={vendorProgress.vendorId}
-                            className="flex flex-col items-center gap-3 relative"
-                          >
-
-                            {/* TOP CONNECTOR LOGIC */}
+                          <div key={vendorProgress.vendorId} className="flex flex-col items-center gap-3 relative">
+                            {/* Branching Logic (Visual Lines) */}
                             {!prevIsParallel ? (
-                              /* CASE A: First Parallel Step -> Branch from Main Timeline */
                               <>
-                                {/* Vertical Line Up (connects vendor to the horizontal level) */}
-                                <div
-                                  className={`${vertLineClass} w-0.5`}
-                                  style={{
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    top: '-32px', // Go up to the branching level
-                                    height: '32px'
-                                  }}
-                                />
-
-                                {/* Horizontal Line Left */}
-                                <div
-                                  className={`${horizLineClass} h-0.5`}
-                                  style={{
-                                    right: '50%', // Starts from center of vendor
-                                    top: '-32px',
-                                    // For first item: reach all the way to main line (-28px approx relative to grid start)
-                                    // For others: reach into the gap (50% + half gap)
-                                    width: isFirst ? 'calc(50% + 80px)' : 'calc(50% + 20px)'
-                                  }}
-                                />
-
-                                {/* Horizontal Line Right (except for last item) */}
+                                <div className={`${vertLineClass} w-0.5`} style={{ left: '50%', transform: 'translateX(-50%)', top: '-32px', height: '32px' }} />
+                                <div className={`${horizLineClass} h-0.5`} style={{ right: '50%', top: '-32px', width: isFirst ? 'calc(50% + 80px)' : 'calc(50% + 20px)' }} />
                                 {!isLast && (
-                                  <div
-                                    className={`${horizLineClass} h-0.5`}
-                                    style={{
-                                      left: '50%', // Starts from center of vendor
-                                      top: '-32px',
-                                      width: 'calc(50% + 20px)' // Reach into the gap
-                                    }}
-                                  />
+                                  <div className={`${horizLineClass} h-0.5`} style={{ left: '50%', top: '-32px', width: 'calc(50% + 20px)' }} />
                                 )}
                               </>
                             ) : (
-                              /* CASE B: Continuation Step -> Connect Straight Up to Previous Vendor */
-                              <div
-                                className={`${vertLineClass} w-0.5`}
-                                style={{
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  top: '-150px', // Extended reach to close gap
-                                  height: '150px'
-                                }}
-                              />
+                              <div className={`${vertLineClass} w-0.5`} style={{ left: '50%', transform: 'translateX(-50%)', top: '-120px', height: '120px' }} />
                             )}
 
-                            {/* CONTINUOUS SPINE LINE (Runs top to bottom behind the card) */}
-                            <div
-                              className={`absolute left-1/2 transform -translate-x-1/2 w-0.5 border-l-2 border-dotted border-[#DEB887] top-0 bottom-0 z-0 ${step.status === 'active' ? 'animate-pulse' : ''}`}
-                            />
-
-                            {/* Vendor step indicator */}
-                            <div className={`relative flex-shrink-0 w-full flex justify-center z-10 ${unfoldClass}`}>
-                              {vendorProgress.status === "completed" ? (
-                                <div className="h-5 w-5 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center border-2 border-white">
-                                  <svg
-                                    className="h-3 w-3 text-white"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </div>
-                              ) : vendorProgress.status === "active" ? (
-                                <div className="h-5 w-5 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin bg-white" />
-                              ) : (
-                                <div className="h-5 w-5 rounded-full border-2 border-[#8B7355]/40 bg-white" />
-                              )}
-                            </div>
-
-                            {/* Vendor content */}
-                            <div className={`w-full relative z-20 flex flex-col items-center ${unfoldClass}`}>
-                              <h4 className="text-sm font-medium text-[#5C4A3A] mb-2 text-center">
+                            {/* Card Content */}
+                            <div className="w-full relative z-20 flex flex-col items-center pb-4">
+                              <h4 className="text-sm font-bold text-[#5C4A3A] mb-2 text-center">
                                 {vendorProgress.vendorName}
                               </h4>
-                              {vendorProgress.output ? (
-                                <div className={`space-y-2 ${vendorProgress.status === "active" ? "unfolding-delay" : ""}`}>
-                                  {typeof vendorProgress.output === 'string' ? (
-                                    <OutputCards
-                                      output={vendorProgress.output}
-                                      stepNumber={step.step}
-                                      contextVendorName={vendorProgress.vendorName}
-                                    />
+                              {vendorProgress.status === "active" && !vendorProgress.output ? (
+                                <div className="bg-white backdrop-blur-xl rounded-2xl px-4 py-3 border border-white shadow-md w-full">
+                                  <div className="flex flex-col items-center justify-center py-2">
+                                    <p className="text-xs font-bold shimmer-text text-center">
+                                      {step.step === 4 ? "Developing strategy..." :
+                                        step.step === 5 ? "Conducting negotiation..." :
+                                          step.step === 3 ? "Evaluating suitability..." :
+                                            "Processing..."}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-full">
+                                  {vendorProgress.output ? (
+                                    typeof vendorProgress.output === 'string' ? (
+                                      <OutputCards output={vendorProgress.output} stepNumber={step.step} contextVendorName={vendorProgress.vendorName} />
+                                    ) : (
+                                      <div className="bg-white backdrop-blur-xl rounded-2xl px-4 py-3 border border-white shadow-md">{vendorProgress.output}</div>
+                                    )
                                   ) : (
-                                    <div className="bg-white backdrop-blur-xl rounded-2xl px-4 py-3 border border-white shadow-md">
-                                      {vendorProgress.output}
+                                    <div className="bg-white backdrop-blur-xl rounded-2xl px-4 py-3 border border-white shadow-md opacity-70">
+                                      <p className="text-xs text-[#8B7355] text-center">{step.message}</p>
                                     </div>
                                   )}
                                 </div>
-                              ) : (
-                                <div className="bg-white backdrop-blur-xl rounded-2xl px-4 py-3 border border-white shadow-md">
-                                  <p className="text-xs text-[#8B7355] leading-relaxed text-center">
-                                    {step.message}
-                                  </p>
-                                </div>
                               )}
                             </div>
-
-                            {/* BOTTOM CONNECTORS (Merge Logic) */}
-                            {nextStep && (
-                              <>
-                                {/* Vertical Stub Down */}
-                                <div
-                                  className={`${vertLineClass} w-0.5`}
-                                  style={{
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    bottom: '-24px',
-                                    height: '24px'
-                                  }}
-                                />
-
-                                {!nextIsParallel && (
-                                  /* Merge Phase: Connect horizontal lines similar to branching */
-                                  <>
-                                    {/* Line Left */}
-                                    <div
-                                      className={`${horizLineClass} h-0.5`}
-                                      style={{
-                                        right: '50%',
-                                        bottom: '-24px',
-                                        width: isFirst ? 'calc(50% + 80px)' : 'calc(50% + 20px)'
-                                      }}
-                                    />
-
-                                    {/* Line Right */}
-                                    {!isLast && (
-                                      <div
-                                        className={`${horizLineClass} h-0.5`}
-                                        style={{
-                                          left: '50%',
-                                          bottom: '-24px',
-                                          width: 'calc(50% + 20px)'
-                                        }}
-                                      />
-                                    )}
-                                  </>
-                                )}
-                              </>
-                            )}
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                );
-              }
+                  )}
+                </div>
+              );
+            }
 
-              // Single line step (non-parallel)
-              return (
+            // Single Step Rendering
+            return (
+              <div key={step.step} className="relative pb-4">
                 <div
-                  key={step.step}
-                  className={`flex items-start gap-4 relative ${step.status === "active" ? "unfolding" : ""
-                    }`}
+                  className="flex items-center gap-4 relative z-10 cursor-pointer group"
+                  onClick={() => !isActive && toggleStep(step.step)}
                 >
-                  {/* Step indicator - positioned on main line */}
-                  <div className="relative flex-shrink-0 mt-1 z-10" style={{ marginLeft: '-24px' }}>
+                  <div className="relative flex-shrink-0 mt-1" style={{ marginLeft: '-24px' }}>
                     {step.status === "completed" ? (
-                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center border-2 border-white">
-                        <svg
-                          className="h-4 w-4 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
+                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#8B7355] to-[#6B5B4F] shadow-md flex items-center justify-center border-2 border-white group-hover:scale-110 transition-transform">
+                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                     ) : (
                       <div className="h-6 w-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin bg-white" />
                     )}
                   </div>
-
-                  {/* Step content */}
-                  <div className="flex-1">
-                    <h3
-                      className={`text-base font-semibold mb-3 ${step.status === "active"
-                        ? "text-[#8B7355]"
-                        : "text-[#5C4A3A]"
-                        }`}
-                    >
+                  <div className="flex items-center gap-2">
+                    <h3 className={`text-base font-semibold ${isActive ? "text-[#8B7355]" : "text-[#5C4A3A]"}`}>
                       {step.title}
                     </h3>
-                    {step.output ? (
-                      <div className={`space-y-3 ${step.status === "active" ? "unfolding-delay" : ""}`}>
+                    {!isActive && (
+                      <span className="text-xs text-[#8B7355]/60 group-hover:text-[#8B7355] transition-colors">
+                        {isExpandedState ? "(Hide)" : "(Show details)"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {isExpandedState && (
+                  <div className="flex-1 ml-8 mt-3 unfolding">
+                    {step.status === "active" && !step.output ? (
+                      <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md">
+                        <p className="text-xs font-bold shimmer-text">Processing...</p>
+                      </div>
+                    ) : step.output ? (
+                      <div className="space-y-3">
                         {typeof step.output === 'string' ? (
                           <OutputCards output={step.output} stepNumber={step.step} />
                         ) : (
@@ -518,19 +369,21 @@ export default function OrderProgressUI({ progress }: OrderProgressUIProps) {
                         )}
                       </div>
                     ) : (
-                      <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md">
+                      <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/40 shadow-md opacity-70">
                         <p className="text-sm text-[#6B5B4F] leading-relaxed">
                           {step.message}
                         </p>
                       </div>
                     )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )
-        }
+                )}
+              </div>
+            );
+          })}
+
+          {/* Invisible element for auto-scroll target */}
+          <div ref={bottomRef} className="h-4" />
+        </div>
       </div>
     </div>
   );

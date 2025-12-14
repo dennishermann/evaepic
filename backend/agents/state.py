@@ -56,3 +56,4 @@ class GraphState(TypedDict):
     # ========== Meta ==========
     phase: str  # Current phase: "extraction", "filtering", "negotiation", "complete"
     error: Optional[str]  # Error message if something goes wrong
+    _evaluated_vendor_id: Annotated[List[str], merge_lists]  # Transient field to signal which vendor completed evaluation

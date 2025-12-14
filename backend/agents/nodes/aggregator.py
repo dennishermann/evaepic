@@ -148,7 +148,9 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
         )
     
     # Calculate benchmarks
-    prices = [float(offer["price_total"]) for offer in valid_offers.values()]
+    quantity = order.get("quantity", {}).get("preferred", 1)
+    
+    prices = [float(offer["price_total"]) * quantity for offer in valid_offers.values()]
     best_price = min(prices)
     median_price = median(prices) if len(prices) > 1 else best_price
     spread = ((max(prices) - best_price) / best_price * 100) if best_price > 0 else 0
@@ -171,7 +173,8 @@ def create_market_analysis(leaderboard: Dict[str, Dict[str, Any]], order: Dict[s
         vendor_id_str = str(vendor_id_raw)
         if hasattr(offer, "get"):
              v_name = offer.get("vendor_name", "Unknown")
-             v_price = offer.get("price_total")
+             v_unit_price = float(offer.get("price_total", 0))
+             v_price = v_unit_price * quantity
         else:
              v_name = "Unknown"
              v_price = 0
@@ -316,23 +319,32 @@ def create_final_comparison_report(leaderboard: Dict[str, Dict[str, Any]], order
         )
     
     # Calculate scores
-    prices = [offer["price_total"] for offer in valid_offers.values()]
+    quantity = order.get("quantity", {}).get("preferred", 1)
+    prices = [float(offer["price_total"]) * quantity for offer in valid_offers.values()]
     best_price = min(prices)
     
     vendor_comparisons = []
     for vendor_id_raw, offer in valid_offers.items():
         score = calculate_vendor_score(offer, best_price, order)
-        price = offer.get("price_total")
+        unit_price = offer.get("price_total")
         
-        if price is not None:
-            delta = float(price) - best_price
+        if unit_price is not None:
+            price = float(unit_price) * quantity
+            delta = price - best_price
         else:
+            price = None
             delta = None
         
+        # Update final offer with total price for display
+        final_offer_dict = dict(offer)
+        final_offer_dict["price_total"] = price
+        if "final_price" in final_offer_dict and final_offer_dict["final_price"]:
+            final_offer_dict["final_price"] = float(final_offer_dict["final_price"]) * quantity
+
         vendor_comparisons.append({
             "vendor_id": str(vendor_id_raw),
             "vendor_name": offer.get("vendor_name", "Unknown"),
-            "final_offer": dict(offer),
+            "final_offer": final_offer_dict,
             "score": score,
             "delta": delta,
             "status": offer.get("status", "completed")
@@ -372,6 +384,7 @@ def create_final_comparison_report(leaderboard: Dict[str, Dict[str, Any]], order
         recommended_name = best_vendor.vendor_name
         
         # Use exact final price usually carried in the offer dict
+        # We've already updated final_offer in the comparing loop to be total price
         final_price = best_vendor.final_offer.get("final_price") or best_vendor.final_offer.get("price_total")
         offer_summary = best_vendor.final_offer.get("final_offer_summary", f"${final_price}")
         

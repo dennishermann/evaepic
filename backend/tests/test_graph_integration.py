@@ -127,3 +127,4 @@ class TestNegotiationGraphIntegration:
              
         else:
              print("   ⚠️ No relevant vendors found (check if 'coffee' vendors exist in DB)")
+

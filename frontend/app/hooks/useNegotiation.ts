@@ -205,10 +205,14 @@ export const useNegotiation = (): UseNegotiationReturn => {
                                 .filter(([_, info]) => info.relevant);
                         }
 
+                        // For Strategy (4) and Negotiation (5), the "start" node has run, so they are all ACTIVE.
+                        // For Evaluation (3), we don't have a start node, so we keep them pending until we get updates (or set active if we want).
+                        const initialStatus = (stepIndex === 4 || stepIndex === 5) ? "active" : "pending";
+
                         const vendorProgress = vendorsToTrack.map(([vendorId, info]) => ({
                             vendorId,
                             vendorName: info.name,
-                            status: "pending" as const,
+                            status: initialStatus as "active" | "pending" | "completed",
                             output: undefined
                         }));
 
@@ -228,22 +232,51 @@ export const useNegotiation = (): UseNegotiationReturn => {
                             const relevant = (stateUpdate.relevant_vendors || []) as any[];
 
                             // We need to identify which vendor was evaluated
-                            // Since we get events per vendor, we can check if any vendor in our tracker matches
-                            // For now, mark the first pending vendor as completed (since events come one per vendor)
-                            const pendingIdx = updatedVendorProgress.findIndex(vp => vp.status === "pending");
-                            if (pendingIdx !== -1) {
-                                const vendorId = updatedVendorProgress[pendingIdx].vendorId;
-                                const vendorInfo = vendorTrackerRef.current[vendorId];
+                            // Use _evaluated_vendor_id if provided (NEW LOGIC)
+                            let vendorId: string | undefined;
 
-                                if (vendorInfo) {
-                                    updatedVendorProgress[pendingIdx] = {
-                                        ...updatedVendorProgress[pendingIdx],
-                                        status: "completed",
-                                        output: relevant.length > 0
-                                            ? formatOutput(node, stateUpdate)
-                                            : "Not suitable for this order"
-                                    };
+                            // Check if _evaluated_vendor_id exists and is an array (from backend update)
+                            if (stateUpdate._evaluated_vendor_id) {
+                                if (Array.isArray(stateUpdate._evaluated_vendor_id) && stateUpdate._evaluated_vendor_id.length > 0) {
+                                    // Take the last one if multiple, or just iterate? 
+                                    // Actually, if parallel completion happens, we might get multiple IDs.
+                                    // But for now let's just grab the first one to resolve at least one card.
+                                    vendorId = String(stateUpdate._evaluated_vendor_id[0]);
+                                } else {
+                                    vendorId = String(stateUpdate._evaluated_vendor_id);
                                 }
+                            }
+
+                            // Find index based on ID (preferred) or first pending (fallback)
+                            let targetIdx = -1;
+
+                            if (vendorId) {
+                                targetIdx = updatedVendorProgress.findIndex(vp => vp.vendorId === vendorId);
+                            } else {
+                                targetIdx = updatedVendorProgress.findIndex(vp => vp.status === "pending");
+                            }
+
+                            if (targetIdx !== -1) {
+                                // If we resolved a vendor, mark it completed based on 'relevant' check
+                                // Since 'relevant' array only contains items if suitable, we check if OUR vendor is inside it?
+                                // Actually, 'relevant_vendors' accumulates. But the node output only returns the *newly* relevant one.
+                                // Wait - LangGraph stream returns the *update*. So if it was rejected, relevant is []. 
+                                // We need to know if THIS vendor was relevant.
+
+                                // If the node update returned relevant_vendors with items, and one of them matches our ID, it's relevant.
+                                // If it returned empty, it's not.
+
+                                // Actually, the stateUpdate provided here IS the payload from the node.
+                                const relevantList = (stateUpdate.relevant_vendors || []) as any[];
+                                const isRelevant = relevantList.some((v: any) => String(v.id) === (vendorId || updatedVendorProgress[targetIdx].vendorId));
+
+                                updatedVendorProgress[targetIdx] = {
+                                    ...updatedVendorProgress[targetIdx],
+                                    status: "completed",
+                                    output: isRelevant
+                                        ? formatOutput(node, stateUpdate) // Shows vendor name
+                                        : "Not suitable for this order"
+                                };
                             }
 
                             // Mark others as active if any completed

@@ -39,6 +39,7 @@ class NegotiateInput(TypedDict):
     conversation_id: Optional[str]  # Existing conversation ID (if any)
     last_offer: Optional[Dict[str, Any]]  # Last offer from this vendor
     product_id: Optional[str]  # Specific product ID being negotiated
+    order_details: Dict[str, Any]  # Explicit order requirements
 
 
 class OfferSnapshot(BaseModel):
@@ -105,10 +106,11 @@ class NegotiationAgent:
     Agent that handles a multi-turn negotiation conversation with a single vendor.
     Runs a continuous loop until a deal is reached or broken.
     """
-    def __init__(self, vendor_id: str, vendor_name: str, strategy: Dict[str, Any]):
+    def __init__(self, vendor_id: str, vendor_name: str, strategy: Dict[str, Any], order_details: Dict[str, Any] = None):
         self.vendor_id = vendor_id
         self.vendor_name = vendor_name
         self.strategy = strategy
+        self.order_details = order_details or {}
         self.llm = ChatAnthropic(
             model=DEFAULT_MODEL,
             temperature=DEFAULT_TEMPERATURE
@@ -200,14 +202,80 @@ Return JSON matching the schema.
         Generate the next message to send to the vendor.
         """
         # Context construction
+        
+        # Extract facts for strict grounding
+        item = self.order_details.get("item", "the product")
+        qty_info = self.order_details.get("quantity", {})
+        # formatting quantity strictly
+        if isinstance(qty_info, dict):
+            quantity_str = f"{qty_info.get('preferred', 1)}"
+        else:
+            quantity_str = str(qty_info)
+            
+        budget_val = self.order_details.get("budget", 0)
+        if budget_val and float(budget_val) > 0:
+            budget_str = f"{budget_val} (Target)"
+        else:
+            budget_str = "No strict limit (Get best market price)"
+        
+        if product_id and product_id not in item:
+             item_display = f"{item} (Specific Model: {product_id})"
+        else:
+             item_display = item
+
+        # Determine Micro-Negotiation Phase based on history length (each interaction is 2 messages)
+        turns_completed = len(history) // 2
+        
+        tactical_phase = "UNKNOWN"
+        tactical_instructions = ""
+        
+        if turns_completed <= 2:
+            tactical_phase = "PHASE 1: THE OPENING (Messages 1–3)"
+            tactical_instructions = """
+TACTICS:
+- The "Flinch": If a price is quoted, react as if it's higher than expected (even if it's okay).
+- The Anchor: If asked for a target, anchor slightly BELOW your actual target.
+- Goal: Set expectations low."""
+        elif turns_completed <= 5:
+            tactical_phase = "PHASE 2: THE TRADE (Messages 4–7)"
+            tactical_instructions = """
+TACTICS:
+- The "Haggle" Loop: Do not just ask for a discount. Offer a "reason" or "trade".
+  - Volume: "If we increase order size..."
+  - Speed: "If we pay immediately..."
+- The "Split the Difference": If close, offer to meet halfway to close the deal.
+- Goal: Trade concessions for price drops."""
+        else:
+            tactical_phase = "PHASE 3: THE CLOSE (Messages 8+)"
+            tactical_instructions = """
+TACTICS:
+- The "Nibble": Ask for one small extra (e.g., expedited shipping) before saying yes.
+- The Confirmation: Explicitly state final terms to avoid ambiguity.
+- Goal: Finalize the deal."""
+
         context = f"""You are an expert procurement negotiator representing an enterprise buyer.
 You are negotiating with {self.vendor_name} (ID: {self.vendor_id}).
+
+STRICT FACTS (DO NOT DEVIATE):
+- Item: {item_display}
+- Quantity: {quantity_str} UNIT(S) ONLY.
+- Budget: {budget_str}
+
+NEVER:
+- Never invent usage statistics (e.g., "we drink 50 cups a day") unless explicitly provided in the order details.
+- Never promise future orders or volume increases to get a discount (unless valid).
+- Never change the quantity being negotiated.
+- Never agree to a price above your walk-away point.
+- NEVER accept the first offer immediately.
 
 YOUR STRATEGY:
 - Objective: {self.strategy.get("objective")}
 - Tone: {self.strategy.get("tone")} (Chat/Messaging style)
 - Price Targets: Anchor=${self.strategy.get("price_targets", {}).get("anchor")}, Target=${self.strategy.get("price_targets", {}).get("target")}, Walk-away=${self.strategy.get("price_targets", {}).get("walk_away")}
 - Key Arguments: {", ".join(self.strategy.get("arguments", []))}
+
+CURRENT TACTICAL PHASE: {tactical_phase}
+{tactical_instructions}
 
 CONTEXT:
 - Product ID: {product_id if product_id else "General item"}
@@ -223,10 +291,7 @@ INSTRUCTIONS:
 - Draft the next short, professional CHAT message.
 - NO "Subject:" lines. This is instant messaging.
 - Be concise (1-3 sentences max).
-- If 'deal_agreed', confirm the details and ask for next steps (PO, invoice).
-- If 'firm' and price is above walk-away, politely withdraw.
-- If 'firm' and price is good, accept it.
-- If 'flexible', push towards target price using arguments.
+- Apply the tactics for the CURRENT PHASE.
 """
 
         # Chat history
@@ -363,7 +428,7 @@ def negotiate_node(input_data: NegotiateInput) -> Dict[str, Any]:
             return {"leaderboard": {}} 
             
     # 2. Run Agent (Full Session)
-    agent = NegotiationAgent(vendor_id, vendor_name, strategy)
+    agent = NegotiationAgent(vendor_id, vendor_name, strategy, order_details=input_data.get("order_details"))
     offer, history = agent.run_negotiation_session(conversation_id, product_id)
     
     # 3. Format Output

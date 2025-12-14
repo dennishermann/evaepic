@@ -294,3 +294,4 @@ class TestSuitabilityResult:
         
         with pytest.raises(ValidationError):
             SuitabilityResult(reasoning="Test")  # Missing suitable
+
