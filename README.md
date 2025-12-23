@@ -1,6 +1,6 @@
 # EvaEpic
 
-A full-stack web application with Next.js frontend and FastAPI backend.
+AskLio challange from the TUM.ai x Anthropic Hackathon in December 2025.
 
 ## Project Structure
 
